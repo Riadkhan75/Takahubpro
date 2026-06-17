@@ -1,0 +1,6 @@
+{
+  "name": "Microtask Earning and Admin Platform",
+  "description": "A comprehensive microtask-earning application with custom tasks, Gmail sales, balance transfers, missions, and an administrative dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
