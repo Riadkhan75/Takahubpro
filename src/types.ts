@@ -7,6 +7,7 @@ export interface UserData {
   telegramBalance?: number;
   whatsappBalance?: number;
   facebookBalance?: number;
+  adsBalance?: number;
   isActive: boolean;
   referCode: string;
   referredBy?: string | null;
@@ -21,6 +22,8 @@ export interface UserData {
   lastSpinDate?: string;
   lastGameDate?: string;
   dailyGameCount?: number;
+  lastAdsterraDate?: string;
+  dailyAdsterraCount?: number;
 }
 
 export interface WithdrawalRequest {
@@ -32,7 +35,7 @@ export interface WithdrawalRequest {
   amount: number;
   status: 'pending' | 'approved' | 'rejected';
   timestamp: number;
-  balanceType?: 'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook';
+  balanceType?: 'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'ads';
 }
 
 export interface GmailSellRequest {
@@ -158,6 +161,7 @@ export interface GlobalSettings {
   minWithdrawTelegram?: number;
   minWithdrawWhatsapp?: number;
   minWithdrawFacebook?: number;
+  minWithdrawAds?: number;
   referLink: string;
   appDownloadLink: string;
   gmailOpenPass: string;
@@ -194,6 +198,7 @@ export interface GlobalSettings {
   jobsMaintenanceMessage?: string;
   postJobMaintenanceEnabled?: boolean;
   postJobMaintenanceMessage?: string;
+  postJobAdminFee?: number;
   spinMaintenanceEnabled?: boolean;
   spinMaintenanceMessage?: string;
   transferMaintenanceEnabled?: boolean;
@@ -230,6 +235,9 @@ export interface GlobalSettings {
   adsterraDirectLink?: string;
   adsterraDirectReward?: number;
   adsterraScriptCode?: string;
+  adsterraDailyLimit?: number;
+  investmentMaintenanceEnabled?: boolean;
+  investmentMaintenanceMessage?: string;
 }
 
 export interface ExternalWebsite {
@@ -242,4 +250,32 @@ export interface ExternalWebsite {
   maintenanceEnabled?: boolean;
   maintenanceMessage?: string;
   timestamp: number;
+}
+
+export interface InvestmentPlan {
+  id: string;
+  name: string;
+  cost: number;
+  totalReturn: number;
+  validityDays: number;
+  timestamp?: number;
+}
+
+export interface PurchasedPlan {
+  id: string;
+  planId: string;
+  planName: string;
+  name?: string;
+  cost: number;
+  totalReturn: number;
+  validityDays: number;
+  dailyIncome: number;
+  dailyReturn?: number;
+  purchaseDate: number;
+  lastClaimDate: number;
+  lastClaimedDate?: string | number;
+  totalClaimed: number;
+  claimsLeft: number;
+  daysClaimed?: number;
+  status: 'active' | 'completed';
 }

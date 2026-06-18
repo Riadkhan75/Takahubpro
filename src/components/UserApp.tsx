@@ -21,7 +21,9 @@ import {
   ActivationRequest, 
   AdCampaign,
   GlobalNotification,
-  ExternalWebsite
+  ExternalWebsite,
+  InvestmentPlan,
+  PurchasedPlan
 } from '../types';
 import { 
   Wallet, 
@@ -537,13 +539,15 @@ interface UserAppProps {
 }
 
 export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, isAdminUser, onSwitchToNovaShop }: UserAppProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'investment-plans'>('home');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
   const [homeTasks, setHomeTasks] = useState<HomeTask[]>([]);
   const [ads, setAds] = useState<AdCampaign[]>([]);
   const [websites, setWebsites] = useState<ExternalWebsite[]>([]);
+  const [investmentPlans, setInvestmentPlans] = useState<InvestmentPlan[]>([]);
+  const [purchasedPlans, setPurchasedPlans] = useState<PurchasedPlan[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
 
   // Tic Tac Toe Game states
@@ -838,6 +842,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           minWithdrawTelegram: data.minWithdrawTelegram || 50,
           minWithdrawWhatsapp: data.minWithdrawWhatsapp || 50,
           minWithdrawFacebook: data.minWithdrawFacebook || 50,
+          minWithdrawAds: data.minWithdrawAds || 50,
           referLink: data.referLink || window.location.origin,
           appDownloadLink: data.appDownloadLink || '',
           gmailOpenPass: data.gmailOpenPass || 'Shihab@2025#',
@@ -872,6 +877,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           jobsMaintenanceMessage: data.jobsMaintenanceMessage || '',
           postJobMaintenanceEnabled: data.postJobMaintenanceEnabled ?? false,
           postJobMaintenanceMessage: data.postJobMaintenanceMessage || '',
+          postJobAdminFee: data.postJobAdminFee || 0,
           spinMaintenanceEnabled: data.spinMaintenanceEnabled ?? false,
           spinMaintenanceMessage: data.spinMaintenanceMessage || '',
           transferMaintenanceEnabled: data.transferMaintenanceEnabled ?? false,
@@ -888,6 +894,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           missionsMaintenanceMessage: data.missionsMaintenanceMessage || '',
           novashopMaintenanceEnabled: data.novashopMaintenanceEnabled ?? false,
           novashopMaintenanceMessage: data.novashopMaintenanceMessage || '',
+          investmentMaintenanceEnabled: data.investmentMaintenanceEnabled ?? false,
+          investmentMaintenanceMessage: data.investmentMaintenanceMessage || '',
           gameDailyLimit: data.gameDailyLimit || 5,
           gameFreeReward: data.gameFreeReward || 1,
           gameMaintenanceEnabled: data.gameMaintenanceEnabled ?? false,
@@ -904,6 +912,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           adsterraDirectLink: data.adsterraDirectLink || '',
           adsterraDirectReward: data.adsterraDirectReward || 0.15,
           adsterraScriptCode: data.adsterraScriptCode || '',
+          adsterraDailyLimit: data.adsterraDailyLimit || 10,
         });
       }
     });
@@ -1025,6 +1034,45 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
     return () => unsubscribe();
   }, []);
+
+  // Listen to Investment Plans
+  useEffect(() => {
+    const plansRef = ref(db, 'investment_plans');
+    const unsubscribe = onValue(plansRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const plansList = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })) as InvestmentPlan[];
+        setInvestmentPlans(plansList.sort((a, b) => (a.cost || 0) - (b.cost || 0)));
+      } else {
+        setInvestmentPlans([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to User Purchased Investments
+  useEffect(() => {
+    if (!userId) return;
+    const userInvestRef = ref(db, `user_investments/${userId}`);
+    const unsubscribe = onValue(userInvestRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const userList = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })) as PurchasedPlan[];
+        setPurchasedPlans(userList.sort((a, b) => (b.purchaseDate || 0) - (a.purchaseDate || 0)));
+      } else {
+        setPurchasedPlans([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
 
   // Upload Helper to ImgBB
   const uploadToImgBB = async (file: File): Promise<string> => {
@@ -1834,6 +1882,10 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       minLimit = globalSettings.minWithdrawFacebook || globalSettings.minWithdraw || 50;
       availableBalance = userData?.facebookBalance || 0;
       balanceField = 'facebookBalance';
+    } else if (withdrawBalanceType === 'ads') {
+      minLimit = globalSettings.minWithdrawAds || globalSettings.minWithdraw || 50;
+      availableBalance = userData?.adsBalance || 0;
+      balanceField = 'adsBalance';
     }
 
     if (!num) {
@@ -1943,8 +1995,13 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       setPostJobMessage({ text: 'মোট বাজেট অবশ্যই একক কাজের রিওয়ার্ড থেকে বেশি হবে', type: 'error' });
       return;
     }
-    if ((userData?.balance || 0) < budget) {
-      setPostJobMessage({ text: 'আপনার অপর্যাপ্ত ব্যালেন্স!', type: 'error' });
+    const adminFee = parseFloat(globalSettings.postJobAdminFee as any || '0');
+    const totalCost = budget + adminFee;
+    if ((userData?.balance || 0) < totalCost) {
+      setPostJobMessage({ 
+        text: `আপনার অপর্যাপ্ত ব্যালেন্স! জব পোস্ট করতে আপনার মোট বাজেট ৳${budget.toFixed(2)} এবং এডমিন ফি ৳${adminFee.toFixed(2)} (মোট: ৳${totalCost.toFixed(2)}) প্রয়োজন। আপনার বর্তমান ব্যালেন্স ৳${(userData?.balance || 0).toFixed(2)}।`, 
+        type: 'error' 
+      });
       return;
     }
     if (!postJobFiles || postJobFiles.length === 0) {
@@ -1973,6 +2030,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         imageUrl: uploadedImageUrls[0] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500',
         exampleImages: uploadedImageUrls,
         totalBudget: budget,
+        adminFee: adminFee,
         perTaskReward: reward,
         maxProofImages: maxProof,
         showLink: postShowLink,
@@ -1983,9 +2041,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         timestamp: Date.now()
       });
 
-      // Deduct budget
+      // Deduct budget + admin fee
       await update(ref(db, `users/${userId}`), {
-        balance: (userData?.balance || 0) - budget
+        balance: (userData?.balance || 0) - totalCost
       });
 
       setPostJobMessage({ text: 'ক্যাম্পেইন সফলভাবে পোস্ট করা হয়েছে!', type: 'success' });
@@ -2196,6 +2254,186 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     }
   };
 
+  // --- INVESTMENT PLANS HANDLERS ---
+  const [investmentConfirm, setInvestmentConfirm] = useState<{
+    plan: InvestmentPlan;
+    show: boolean;
+  } | null>(null);
+
+  const handleBuyInvestmentPlan = async (plan: InvestmentPlan) => {
+    if (!userId || !userData) {
+      triggerToast('দয়া করে প্রথমে লগইন করুন', 'error');
+      return;
+    }
+
+    try {
+      const userRef = ref(db, `users/${userId}`);
+      const userSnap = await get(userRef);
+      if (!userSnap.exists()) {
+        triggerToast('ইউজার ডাটা পাওয়া যায়নি', 'error');
+        return;
+      }
+      const freshUser = userSnap.val();
+      const currentBalance = freshUser.balance || 0;
+
+      if (currentBalance < plan.cost) {
+        triggerToast(`দুঃখিত! এই প্ল্যানটি কিনতে ৳${plan.cost} প্রয়োজন। আপনার বর্তমান ব্যালেন্স ৳${currentBalance}`, 'error');
+        return;
+      }
+
+      setInvestmentConfirm({ plan, show: true });
+    } catch (e: any) {
+      triggerToast('ত্রুটি: ' + e.message, 'error');
+    }
+  };
+
+  const handleConfirmBuyInvestment = async () => {
+    if (!userId || !userData || !investmentConfirm) return;
+    const plan = investmentConfirm.plan;
+    setInvestmentConfirm(null);
+
+    try {
+      const userRef = ref(db, `users/${userId}`);
+      const userSnap = await get(userRef);
+      if (!userSnap.exists()) {
+        triggerToast('ইউজার ডাটা পাওয়া যায়নি', 'error');
+        return;
+      }
+      const freshUser = userSnap.val();
+      const currentBalance = freshUser.balance || 0;
+
+      if (currentBalance < plan.cost) {
+        triggerToast(`দুঃখিত! এই প্ল্যানটি কিনতে ৳${plan.cost} প্রয়োজন। আপনার বর্তমান ব্যালেন্স ৳${currentBalance}`, 'error');
+        return;
+      }
+
+      const nextBalance = currentBalance - plan.cost;
+      const investRef = ref(db, `user_investments/${userId}`);
+      const newInvestRef = push(investRef);
+      const purchaseKey = newInvestRef.key;
+
+      const purchasedPlanObj: PurchasedPlan = {
+        id: purchaseKey || '',
+        planId: plan.id,
+        planName: plan.name,
+        cost: plan.cost,
+        totalReturn: plan.totalReturn,
+        validityDays: plan.validityDays,
+        dailyIncome: plan.totalReturn / plan.validityDays,
+        purchaseDate: Date.now(),
+        lastClaimDate: 0,
+        totalClaimed: 0,
+        claimsLeft: plan.validityDays,
+        status: 'active'
+      };
+
+      await update(userRef, { balance: nextBalance });
+      await set(newInvestRef, purchasedPlanObj);
+
+      // Record in wallet history
+      const historyRef = push(ref(db, `wallet_history/${userId}`));
+      await set(historyRef, {
+        id: historyRef.key,
+        userId,
+        amount: plan.cost,
+        type: 'deduction',
+        purpose: `'${plan.name}' ইনভেস্টমেন্ট প্ল্যান সচল`,
+        timestamp: Date.now()
+      });
+
+      // push notification
+      const notifRef = push(ref(db, `notification_history/${userId}`));
+      await set(notifRef, {
+        id: notifRef.key,
+        userId,
+        title: 'ইনভেস্টমেন্ট প্ল্যান সচল হয়েছে! 🎉',
+        body: `অভিনন্দন! আপনার '${plan.name}' প্ল্যানটি সফলভাবে সচল করা হয়েছে। প্রতি ২৪ ঘণ্টা পর পর দৈনিক ইনকাম ক্লেইম করতে পারবেন।`,
+        timestamp: Date.now(),
+        read: false
+      });
+
+      triggerToast(`'${plan.name}' ইনভেস্টমেন্ট প্ল্যানটি সফলভাবে চালু হয়েছে!`, 'success');
+    } catch (e: any) {
+      triggerToast('ত্রুটি: ' + e.message, 'error');
+    }
+  };
+
+  const handleClaimInvestmentPlan = async (purchased: PurchasedPlan) => {
+    if (!userId || !userData) return;
+
+    if (purchased.status !== 'active' || purchased.claimsLeft <= 0) {
+      triggerToast('এই প্ল্যানের মেয়াদ শেষ অথবা এটি নিষ্ক্রিয় আছে', 'error');
+      return;
+    }
+
+    const now = Date.now();
+    const oneDayInMs = 23 * 60 * 60 * 1000; // 23 hours to let user claim comfortably
+    
+    if (purchased.lastClaimDate > 0 && (now - purchased.lastClaimDate < oneDayInMs)) {
+      const msLeft = oneDayInMs - (now - purchased.lastClaimDate);
+      const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
+      const minsLeft = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+      triggerToast(`পরবর্তী ক্লেইম করতে আরও ${hoursLeft} ঘণ্টা ${minsLeft} মিনিট অপেক্ষা করুন।`, 'error');
+      return;
+    }
+
+    try {
+      const userRef = ref(db, `users/${userId}`);
+      const userSnap = await get(userRef);
+      if (!userSnap.exists()) {
+        triggerToast('ইউজার ডাটা খুজে পাওয়া যায়নি', 'error');
+        return;
+      }
+      const freshUser = userSnap.val();
+      const currentBalance = freshUser.balance || 0;
+
+      const dailyAmt = purchased.dailyIncome;
+      const nextBalance = currentBalance + dailyAmt;
+
+      const updatedClaimsLeft = purchased.claimsLeft - 1;
+      const nextClaimedAmount = (purchased.totalClaimed || 0) + dailyAmt;
+      const nextStatus = updatedClaimsLeft <= 0 ? 'completed' : 'active';
+
+      // Update purchased plan
+      const planRef = ref(db, `user_investments/${userId}/${purchased.id}`);
+      await update(planRef, {
+        lastClaimDate: now,
+        totalClaimed: nextClaimedAmount,
+        claimsLeft: updatedClaimsLeft,
+        status: nextStatus
+      });
+
+      // Update user balance
+      await update(userRef, { balance: nextBalance });
+
+      // Record in wallet history
+      const historyRef = push(ref(db, `wallet_history/${userId}`));
+      await set(historyRef, {
+        id: historyRef.key,
+        userId,
+        amount: dailyAmt,
+        type: 'earning',
+        purpose: `'${purchased.planName}' প্ল্যান থেকে দৈনিক রিওয়ার্ড ক্লেইম`,
+        timestamp: now
+      });
+
+      // Record in notification history
+      const notifRef = push(ref(db, `notification_history/${userId}`));
+      await set(notifRef, {
+        id: notifRef.key,
+        userId,
+        title: 'দৈনিক রিটার্ন ক্লেইম সফল! ৳' + dailyAmt.toFixed(2),
+        body: `'${purchased.planName}' প্ল্যান থেকে দৈনিক রিটার্ন ৳${dailyAmt.toFixed(2)} আপনার ব্যালেন্সে যোগ করা হয়েছে।`,
+        timestamp: now,
+        read: false
+      });
+
+      triggerToast(`আজকের দৈনিক রিটার্ন ৳${dailyAmt.toFixed(2)} সফলভাবে ক্লেইম করা হয়েছে!`, 'success');
+    } catch (e: any) {
+      triggerToast('ত্রুটি: ' + e.message, 'error');
+    }
+  };
+
   // Adsterra Direct Link Watch Ad handler
   const handleWatchAdsterraAd = () => {
     if (!userData?.isActive && !isAdminUser && !globalSettings.freeActivationEnabled) {
@@ -2206,6 +2444,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     if (isAdWatching || isAdsterraWatching) return;
     if (!globalSettings.adsterraDirectLink) {
       triggerToast('দুঃখিত, কোনো এডস্টেরা এড লিংক সেটআপ করা নেই!', 'error');
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastDate = userData?.lastAdsterraDate || '';
+    const currentCount = (lastDate === todayStr) ? (userData?.dailyAdsterraCount || 0) : 0;
+    const limit = globalSettings.adsterraDailyLimit || 10;
+
+    if (currentCount >= limit) {
+      triggerToast(`⚠️ আপনি আজকের অ্যাড লিমিট (${limit} টি) শেষ করেছেন! আগামীকাল আবার চেষ্টা করুন।`, 'error');
       return;
     }
 
@@ -2235,12 +2483,19 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const handleFinishAdsterraWatching = async () => {
     setIsAdsterraWatching(false);
     try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const lastDate = userData?.lastAdsterraDate || '';
+      const currentCount = (lastDate === todayStr) ? (userData?.dailyAdsterraCount || 0) : 0;
+
       const reward = parseFloat(globalSettings.adsterraDirectReward as any || '0.15');
-      const newBal = (userData?.balance || 0) + reward;
+      const newAdsBalance = (userData?.adsBalance || 0) + reward;
+
       await update(ref(db, `users/${userId}`), {
-        balance: newBal
+        adsBalance: newAdsBalance,
+        lastAdsterraDate: todayStr,
+        dailyAdsterraCount: currentCount + 1
       });
-      triggerToast(`৳${reward.toFixed(2)} এডস্টেরা স্পন্সর এডস বোনাস যোগ হয়েছে!`, 'success');
+      triggerToast(`৳${reward.toFixed(2)} এডস্টেরা স্পন্সর এডস বোনাস আপনার এডস ব্যালেন্সে যোগ হয়েছে!`, 'success');
     } catch (e: any) {
       triggerToast('ক্রেডিট যোগ করতে সমস্যা হয়েছে', 'error');
     }
@@ -2595,6 +2850,14 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   <span>বিজ্ঞপ্তি সমূহ</span>
                 </button>
 
+                <button onClick={() => switchTab('investment-plans')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'investment-plans' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
+                  <TrendingUp size={18} className="text-emerald-500" />
+                  <span className="flex items-center gap-1.5">
+                    <span>ইনভেস্টমেন্ট প্ল্যান</span>
+                    <span className="bg-emerald-550 text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">Income</span>
+                  </span>
+                </button>
+
                 <button onClick={() => switchTab('support')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'support' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
                   <HelpCircle size={18} className="text-[#764ba2]" />
                   <span>সাহায্য ও সাপোর্ট</span>
@@ -2699,7 +2962,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             {/* AI Platforms Income Balances Bento Box */}
             <div className="space-y-2 mt-4">
               <span className="text-[10px] font-extrabold uppercase text-stone-400 tracking-wider block pl-2">সার্ভিস ভিত্তিক ইনকাম ব্যালেন্স (AI Platforms Income)</span>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
                 {/* Gmail Balance Card */}
                 <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-1">
@@ -2745,6 +3008,18 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   <div>
                     <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.facebookBalance || 0).toFixed(2)}</h2>
                     <span className="text-[9px] text-indigo-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawFacebook || 50}</span>
+                  </div>
+                </div>
+
+                {/* Ads Balance Card */}
+                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-stone-500 text-[10px] font-bold">Ads Earnings</span>
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.adsBalance || 0).toFixed(2)}</h2>
+                    <span className="text-[9px] text-amber-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawAds || 50}</span>
                   </div>
                 </div>
               </div>
@@ -2976,6 +3251,17 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       </span>
                     </div>
                     <h4 className="font-bold text-xs text-stone-800 mb-1">স্পেশাল বিজ্ঞাপন দেখে ৳{globalSettings.adsterraDirectReward || '0.15'} আয় করুন!</h4>
+                    {(() => {
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const lastDate = userData?.lastAdsterraDate || '';
+                      const currentCount = (lastDate === todayStr) ? (userData?.dailyAdsterraCount || 0) : 0;
+                      const limit = globalSettings.adsterraDailyLimit || 10;
+                      return (
+                        <div className="text-[10px] text-[#764ba2] font-black mb-2 bg-[#764ba2]/10 px-2.5 py-1 rounded-lg w-fit inline-block">
+                          আজকের লিমিট: {currentCount} / {limit} টি বিজ্ঞাপন
+                        </div>
+                      );
+                    })()}
                     <p className="text-stone-500 text-[10px] leading-relaxed mb-3">
                       নিচের বাটনে ক্লিক করে বিজ্ঞাপনটি স্ক্রিনে ১৫ সেকেন্ড লোড রাখুন এবং ক্লেইম বোনাস সম্পন্ন করুন।
                     </p>
@@ -3072,7 +3358,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </div>
             </div>
 
-            <AdsterraScriptBanner scriptCode={globalSettings.adsterraScriptCode || ''} />
+            {(isAdsterraWatching || isAdWatching) && (
+              <AdsterraScriptBanner scriptCode={globalSettings.adsterraScriptCode || ''} />
+            )}
 
           </motion.div>
         )}
@@ -3308,13 +3596,14 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-stone-700 block pl-1">উৎস ব্যালেন্স নির্বাচন করুন (Withdrawal Fund Source)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                     {[
                       { type: 'main', label: 'Main Bal', bal: userData?.balance || 0, min: globalSettings.minWithdraw || 50 },
                       { type: 'gmail', label: 'Gmail', bal: userData?.gmailBalance || 0, min: globalSettings.minWithdrawGmail || 50 },
                       { type: 'telegram', label: 'Telegram', bal: userData?.telegramBalance || 0, min: globalSettings.minWithdrawTelegram || 50 },
                       { type: 'whatsapp', label: 'WhatsApp', bal: userData?.whatsappBalance || 0, min: globalSettings.minWithdrawWhatsapp || 50 },
-                      { type: 'facebook', label: 'Facebook', bal: userData?.facebookBalance || 0, min: globalSettings.minWithdrawFacebook || 50 }
+                      { type: 'facebook', label: 'Facebook', bal: userData?.facebookBalance || 0, min: globalSettings.minWithdrawFacebook || 50 },
+                      { type: 'ads', label: 'Ads Bal', bal: userData?.adsBalance || 0, min: globalSettings.minWithdrawAds || 50 }
                     ].map((item) => (
                       <div 
                         key={item.type}
@@ -3992,6 +4281,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
             <h2 className="text-lg font-bold text-stone-800 tracking-tight">নতুন ক্যাম্পেইন (Micro Job) পোস্ট করুন</h2>
 
+            {parseFloat(globalSettings.postJobAdminFee as any || '0') > 0 ? (
+              <div className="bg-amber-50 border border-amber-250 rounded-2xl p-4 flex gap-3 text-xs text-amber-800 font-semibold leading-relaxed">
+                <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p>প্রতিটি ক্যাম্পেইন (Micro Job) সফলভাবে পোস্ট করার জন্য এডমিন চার্জ/ফি ৳{parseFloat(globalSettings.postJobAdminFee as any || '0').toFixed(2)} প্রযোজ্য।</p>
+                  <p className="text-[10px] text-amber-700/80 font-medium">আপনার একাউন্ট ব্যালেন্স থেকে জবের মোট বাজেট এবং এডমিন ফি কাটা হবে। পর্যাপ্ত ব্যালেন্স না থাকলে ক্যাম্পেইনটি পোস্ট করতে পারবেন না।</p>
+                </div>
+              </div>
+            ) : null}
+
             <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
               <form onSubmit={handlePostJobSubmit} className="space-y-4">
                 
@@ -4110,11 +4409,21 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition"
                     required
                   />
-                  {computedSlots > 0 && (
-                    <span className="text-[11px] block pl-1 font-bold text-[#764ba2]">
-                      ৳{postJobReward} রেট দিয়ে মোট {computedSlots} জন লোক কাজ করতে পারবে।
+                  <div className="space-y-1 pl-1 text-[11px] font-bold">
+                    {computedSlots > 0 && (
+                      <span className="block text-[#764ba2]">
+                        ৳{postJobReward} রেট দিয়ে মোট {computedSlots} জন লোক কাজ করতে পারবে।
+                      </span>
+                    )}
+                    <span className="block text-amber-600">
+                      এডমিন পোস্টিং ফি: ৳{parseFloat(globalSettings.postJobAdminFee as any || '0').toFixed(2)}
                     </span>
-                  )}
+                    {parseFloat(postJobBudget || '0') > 0 && (
+                      <span className="block text-stone-600">
+                        মোট কাটা হবে: ৳{(parseFloat(postJobBudget || '0') + parseFloat(globalSettings.postJobAdminFee as any || '0')).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -4736,6 +5045,290 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             </div>
           </motion.div>
         )}
+
+        {/* --- CARD TAB: INVESTMENT PLANS --- */}
+        {activeTab === 'investment-plans' && (globalSettings.investmentMaintenanceEnabled ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24 font-sans">
+            <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-300 bg-white hover:bg-stone-50 font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs">
+              Back
+            </button>
+            <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4">
+              <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
+                <AlertOctagon size={28} />
+              </div>
+              <h3 className="font-extrabold text-stone-850 text-base">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h3>
+              <p className="text-[#e11d48] text-xs text-center font-medium bg-rose-50 border border-rose-200/55 p-4 rounded-xl max-w-sm leading-relaxed">
+                {globalSettings.investmentMaintenanceMessage || 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ইনভেস্টমেন্ট সিস্টেম বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।'}
+              </p>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pb-24 font-sans">
+            <div className="bg-gradient-to-br from-[#667eea] to-[#764ba2] p-6 rounded-3xl text-white shadow-lg space-y-2">
+              <h2 className="text-lg font-black flex items-center gap-2">
+                <TrendingUp size={22} className="text-emerald-300" />
+                <span>ইনভেস্টমেন্ট ও দৈনিক প্রফিট আর্নিং</span>
+              </h2>
+              <p className="text-white/80 text-[11px] leading-relaxed font-semibold">
+                আপনার পছন্দের ইনভেস্টমেন্ট প্ল্যান কিনে প্রতিদিন নিশ্চিত ইনকাম উপার্জন শুরু করুন। আপনার কেনা সমস্ত প্ল্যান থেকে প্রতি ২৪ ঘণ্টায় একবার করে দৈনিক রিওয়ার্ড ক্লেইম করুন যা সরাসরি আপনার মূল ব্যালেন্সে যোগ হবে!
+              </p>
+            </div>
+
+            {/* SECTION 1: USER'S ACTIVE PLANS */}
+            <div className="bg-stone-50 p-4 rounded-3xl border border-stone-150 space-y-4">
+              <h3 className="text-stone-800 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border-b border-stone-200 pb-2">
+                <Coins size={14} className="text-amber-500" />
+                <span>আমার ইনভেস্টমেন্ট ট্র্যাকার ({purchasedPlans.length})</span>
+              </h3>
+
+              {purchasedPlans.length === 0 ? (
+                <div className="bg-white border border-stone-200 rounded-2xl p-6 text-center text-stone-500 text-xs py-10 font-bold space-y-1">
+                  <p>আপনার কোনো সক্রিয় ইনভেস্টমেন্ট প্ল্যান নেই।</p>
+                  <p className="text-[10px] text-stone-400 font-medium">নিচের তালিকা থেকে একটি উপযুক্ত প্ল্যান বেছে নিয়ে সচল করুন এবং দৈনিক উপার্জন করুন।</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {purchasedPlans.map((purchased) => {
+                    const daily = purchased.dailyIncome || (purchased.dailyReturn) || 0;
+                    const canClaim = purchased.status === 'active' && purchased.claimsLeft > 0;
+                    
+                    // Time checking
+                    const now = Date.now();
+                    const oneDayInMs = 23 * 60 * 60 * 1000;
+                    const elapsed = now - purchased.lastClaimDate;
+                    const isTimeReady = purchased.lastClaimDate === 0 || elapsed >= oneDayInMs;
+
+                    let claimStatusText = '';
+                    let claimSubText = '';
+                    if (purchased.status === 'completed' || purchased.claimsLeft <= 0) {
+                      claimStatusText = 'মেয়াদ শেষ 🔒';
+                      claimSubText = 'সমস্ত রিওয়ার্ড ক্লেইম করা হয়েছে।';
+                    } else if (!isTimeReady) {
+                      const msLeft = oneDayInMs - elapsed;
+                      const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
+                      const minsLeft = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+                      claimStatusText = `${hoursLeft}ঘণ্টা ${minsLeft}মি. পর ক্লেইম`;
+                      claimSubText = `২৪ ঘণ্টা পর পরবর্তী দৈনিক প্রফিট সচল হবে।`;
+                    } else {
+                      claimStatusText = 'ক্লেইম করুন 💰';
+                      claimSubText = `ক্লিক করে ৳${daily.toFixed(2)} ব্যালেন্সে যুক্ত করুন!`;
+                    }
+
+                    return (
+                      <div key={purchased.id} className="bg-white border border-stone-150 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start border-b border-stone-100 pb-2">
+                            <div>
+                              <h4 className="font-extrabold text-[#764ba2] text-sm">{purchased.planName}</h4>
+                              <p className="text-[9px] text-stone-400 font-mono">আইডি: {purchased.id.substring(0, 8)}...</p>
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-[9px] font-extrabold shadow-2xs ${
+                              purchased.status === 'active' ? 'bg-[#764ba2]/5 text-[#764ba2] border border-[#764ba2]/20' : 'bg-stone-100 text-stone-400'
+                            }`}>
+                              {purchased.status === 'active' ? 'চলমান' : 'সম্পন্ন'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-sans">
+                            <div className="bg-stone-50 p-2 rounded-xl">
+                              <span className="text-stone-400 block mb-0.5">মূল্য</span>
+                              <span className="font-bold text-stone-700">৳{purchased.cost}</span>
+                            </div>
+                            <div className="bg-stone-50 p-2 rounded-xl">
+                              <span className="text-stone-400 block mb-0.5">মোট প্রাপ্তি</span>
+                              <span className="font-bold text-emerald-600">৳{purchased.totalReturn}</span>
+                            </div>
+                            <div className="bg-stone-50 p-2 rounded-xl">
+                              <span className="text-stone-400 block mb-0.5">দৈনিক প্রফিট</span>
+                              <span className="font-bold text-emerald-600">৳{daily.toFixed(2)}</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1 text-[11px] font-medium text-stone-600">
+                            <div className="flex justify-between">
+                              <span>মোট ক্লেইমকৃত টাকা:</span>
+                              <span className="font-bold text-stone-850">৳{(purchased.totalClaimed || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>মোট ক্লেইমের মেয়াদ:</span>
+                              <span className="font-bold text-slate-800">{purchased.validityDays} দিন</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>আজ পর্যন্ত ক্লেইম:</span>
+                              <span className="font-black text-rose-550">{purchased.validityDays - purchased.claimsLeft} বার</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>অবশিষ্ট ক্লেইম:</span>
+                              <span className="font-black text-emerald-550">{purchased.claimsLeft} বার</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-stone-100">
+                          {purchased.status === 'active' && purchased.claimsLeft > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleClaimInvestmentPlan(purchased)}
+                              disabled={!isTimeReady}
+                              className={`w-full py-3 rounded-xl text-xs font-black tracking-wide transition shadow-sm cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                                isTimeReady 
+                                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
+                                  : 'bg-stone-100 text-stone-400 border border-stone-150/40 cursor-not-allowed'
+                              }`}
+                            >
+                              <span className="text-[11px]">{claimStatusText}</span>
+                              <span className={`text-[9px] font-medium leading-none ${isTimeReady ? 'text-white/80' : 'text-stone-400/80'}`}>{claimSubText}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full py-2.5 bg-stone-100/60 border border-stone-150 text-stone-400 rounded-xl text-[10px] font-bold"
+                            >
+                              এই প্ল্যানের মেয়াদ উত্তীর্ণ হয়েছে 🔒
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 2: AVAILABLE INVESTMENT PLANS */}
+            <div className="space-y-4">
+              <h3 className="text-stone-800 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 pb-2">
+                <TrendingUp size={14} className="text-[#764ba2]" />
+                <span>উপলব্ধ সেরা ইনভেস্টমেন্ট প্ল্যানসমূহ ({investmentPlans.length})</span>
+              </h3>
+
+              {investmentPlans.length === 0 ? (
+                <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center text-stone-500 text-xs font-medium">
+                  বর্তমানে নতুন কোনো ইনভেস্টমেন্ট প্ল্যান উপলব্ধ নেই। এডমিন নতুন প্ল্যান যোগ করলে এখানে দেখতে পাবেন।
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                  {investmentPlans.map((plan) => {
+                    const daily = plan.totalReturn / plan.validityDays;
+                    const costString = plan.cost.toFixed(0);
+                    return (
+                      <div key={plan.id} className="bg-white border border-stone-200 rounded-3xl p-5 flex flex-col justify-between hover:shadow-md hover:scale-[1.01] transition-all relative overflow-hidden group">
+                        {/* Golden corner badge */}
+                        <div className="absolute top-0 right-0 bg-[#764ba2] text-white text-[9px] font-extrabold px-3 py-1.5 rounded-bl-xl leading-none uppercase shadow-sm">
+                          HOT 🔥
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <h4 className="text-stone-800 text-sm font-black tracking-tight">{plan.name}</h4>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-xl font-black text-[#764ba2]">৳{costString}</span>
+                              <span className="text-[10px] text-stone-400 font-bold">অ্যাক্টিভেশন ফি</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-[#764ba2]/5 p-3 rounded-2xl border border-[#764ba2]/10 space-y-1.5 text-xs text-stone-700 font-medium font-sans">
+                            <div className="flex justify-between items-center">
+                              <span className="text-stone-500 text-[11px]">মোট রিটার্ন রিওয়ার্ড:</span>
+                              <span className="font-extrabold text-emerald-650">৳{plan.totalReturn}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-stone-500 text-[11px]">দৈনিক ক্লেইম প্রফিট:</span>
+                              <span className="font-extrabold text-emerald-650">৳{daily.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-stone-500 text-[11px]">মেয়াদকাল:</span>
+                              <span className="font-black text-slate-800">{plan.validityDays} দিন (Days)</span>
+                            </div>
+                          </div>
+
+                          <div className="text-[10px] text-stone-400 leading-normal text-center bg-stone-50 px-2 py-1.5 rounded-xl font-medium">
+                            ৳{costString} দিয়ে সচল করলে প্রতিদিন ৳{daily.toFixed(1)} লাভ সহ মেয়াদকাল ধরে সর্বমোট ৳{plan.totalReturn} ফেরত আসবে।
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-stone-100">
+                          <button
+                            type="button"
+                            onClick={() => handleBuyInvestmentPlan(plan)}
+                            className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white font-extrabold text-xs py-3 rounded-xl transition shadow-sm hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Coins size={14} />
+                            <span>প্ল্যানটি চালু করুন 🛒</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* CONFIRMATION POPUP OVERLAY */}
+            <AnimatePresence>
+              {investmentConfirm?.show && (
+                <>
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setInvestmentConfirm(null)}
+                    className="fixed inset-0 bg-black/60 z-55 backdrop-blur-xs"
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="fixed inset-x-5 bottom-10 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 z-55 space-y-4"
+                  >
+                    <div className="bg-[#764ba2]/5 text-[#764ba2] w-12 h-12 rounded-2xl flex items-center justify-center shrink-0">
+                      <TrendingUp size={24} />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-stone-850 font-black text-sm">ইনভেস্টমেন্ট প্ল্যান নিশ্চিতকরণ</h4>
+                      <p className="text-stone-500 text-xs leading-relaxed font-semibold">
+                        আপনি কি নিশ্চিতভাবে <span className="text-[#764ba2] font-black">৳{investmentConfirm.plan.cost}</span> ফি দিয়ে <span className="text-slate-800 font-extrabold">'{investmentConfirm.plan.name}'</span> ইনভেস্টমেন্ট প্ল্যানটি চালু করতে চান?
+                      </p>
+                    </div>
+
+                    <div className="bg-stone-50 p-3 rounded-2xl space-y-1 border border-stone-150/60 text-xs text-stone-600 font-medium">
+                      <div className="flex justify-between">
+                        <span>মোট রিটার্ন প্রফিট:</span>
+                        <span className="font-extrabold text-emerald-600">৳{investmentConfirm.plan.totalReturn}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>মেয়াদকাল:</span>
+                        <span className="font-bold text-slate-800">{investmentConfirm.plan.validityDays} দিন</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>দৈনিক আয়:</span>
+                        <span className="font-bold text-emerald-600">৳{(investmentConfirm.plan.totalReturn / investmentConfirm.plan.validityDays).toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setInvestmentConfirm(null)}
+                        className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-600 py-3 rounded-xl font-bold text-xs transition cursor-pointer"
+                      >
+                        বাতিল করুন
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmBuyInvestment}
+                        className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-extrabold text-xs transition cursor-pointer shadow-sm"
+                      >
+                        হ্যাঁ, সচল করুন ✔
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        ))}
 
         {activeTab === 'game' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24">

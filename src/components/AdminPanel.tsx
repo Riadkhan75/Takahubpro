@@ -25,7 +25,9 @@ import {
   JobSubmission, 
   ActivationRequest,
   Job,
-  ExternalWebsite
+  ExternalWebsite,
+  InvestmentPlan,
+  PurchasedPlan
 } from '../types';
 import { 
   Home, 
@@ -60,7 +62,8 @@ import {
   AlertCircle,
   Globe,
   ShoppingBag,
-  ExternalLink
+  ExternalLink,
+  TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -73,8 +76,16 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwitchToNovaAdmin }: AdminPanelProps) {
-  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns'>('stats');
+  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans'>('stats');
   const [sellSubTab, setSellSubTab] = useState<'gmail' | 'telegram' | 'whatsapp' | 'facebook'>('gmail');
+
+  // Investment Plans States
+  const [investmentPlans, setInvestmentPlans] = useState<InvestmentPlan[]>([]);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [planName, setPlanName] = useState('');
+  const [planCost, setPlanCost] = useState('');
+  const [planTotalReturn, setPlanTotalReturn] = useState('');
+  const [planValidityDays, setPlanValidityDays] = useState('');
 
   // Database Data States
   const [dbUsers, setDbUsers] = useState<UserData[]>([]);
@@ -109,7 +120,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   } | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [userBalanceChangeInput, setUserBalanceChangeInput] = useState('');
-  const [userBalanceTypeToEdit, setUserBalanceTypeToEdit] = useState<'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook'>('main');
+  const [userBalanceTypeToEdit, setUserBalanceTypeToEdit] = useState<'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'ads'>('main');
   
   const [selectedSubmission, setSelectedSubmission] = useState<JobSubmission | null>(null);
   const [reviewRewardInput, setReviewRewardInput] = useState('');
@@ -144,6 +155,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [setMinWithdrawTelegramLimit, setSetMinWithdrawTelegramLimit] = useState('50');
   const [setMinWithdrawWhatsappLimit, setSetMinWithdrawWhatsappLimit] = useState('50');
   const [setMinWithdrawFacebookLimit, setSetMinWithdrawFacebookLimit] = useState('50');
+  const [setMinWithdrawAdsLimit, setSetMinWithdrawAdsLimit] = useState('50');
   const [setAppDownloadUrl, setSetAppDownloadUrl] = useState('');
   const [setGmailBuyPrice, setSetGmailBuyPrice] = useState('15');
   const [setGmailOpenPassword, setSetGmailOpenPassword] = useState('Shihab@2025#');
@@ -168,6 +180,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [jobsMaintMsg, setJobsMaintMsg] = useState('');
   const [postJobMaintEnabled, setPostJobMaintEnabled] = useState(false);
   const [postJobMaintMsg, setPostJobMaintMsg] = useState('');
+  const [postJobAdminFee, setPostJobAdminFee] = useState('0');
   const [spinMaintEnabled, setSpinMaintEnabled] = useState(false);
   const [spinMaintMsg, setSpinMaintMsg] = useState('');
   const [transferMaintEnabled, setTransferMaintEnabled] = useState(false);
@@ -184,6 +197,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [missionsMaintMsg, setMissionsMaintMsg] = useState('');
   const [novashopMaintEnabled, setNovashopMaintEnabled] = useState(false);
   const [novashopMaintMsg, setNovashopMaintMsg] = useState('');
+  const [investmentMaintEnabled, setInvestmentMaintEnabled] = useState(false);
+  const [investmentMaintMsg, setInvestmentMaintMsg] = useState('');
   const [gameDailyLimit, setGameDailyLimit] = useState('5');
   const [gameFreeReward, setGameFreeReward] = useState('1');
   const [gameMaintEnabled, setGameMaintEnabled] = useState(false);
@@ -218,6 +233,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [adsterraDirectLink, setAdsterraDirectLink] = useState('');
   const [adsterraDirectReward, setAdsterraDirectReward] = useState('0.15');
   const [adsterraScriptCode, setAdsterraScriptCode] = useState('');
+  const [adsterraDailyLimit, setAdsterraDailyLimit] = useState('10');
   const [telegramAdminBotToken, setTelegramAdminBotToken] = useState('');
   const [telegramAdminChatId, setTelegramAdminChatId] = useState('');
   
@@ -463,6 +479,20 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       }
     });
 
+    // Investment Plans
+    onValue(ref(db, 'investment_plans'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const planList = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })) as InvestmentPlan[];
+        setInvestmentPlans(planList.sort((a, b) => (a.cost || 0) - (b.cost || 0)));
+      } else {
+        setInvestmentPlans([]);
+      }
+    });
+
     // Settings
     onValue(ref(db, 'settings'), (snapshot) => {
       const data = snapshot.val();
@@ -503,6 +533,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           jobsMaintenanceMessage: data.jobsMaintenanceMessage || '',
           postJobMaintenanceEnabled: data.postJobMaintenanceEnabled || false,
           postJobMaintenanceMessage: data.postJobMaintenanceMessage || '',
+          postJobAdminFee: data.postJobAdminFee || 0,
           spinMaintenanceEnabled: data.spinMaintenanceEnabled || false,
           spinMaintenanceMessage: data.spinMaintenanceMessage || '',
           transferMaintenanceEnabled: data.transferMaintenanceEnabled || false,
@@ -531,6 +562,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           adsterraDirectLink: data.adsterraDirectLink || '',
           adsterraDirectReward: data.adsterraDirectReward || 0.15,
           adsterraScriptCode: data.adsterraScriptCode || '',
+          adsterraDailyLimit: data.adsterraDailyLimit || 10,
+          minWithdrawAds: data.minWithdrawAds || 50,
         });
 
         // Seed inputs
@@ -539,6 +572,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setSetMinWithdrawTelegramLimit(String(data.minWithdrawTelegram || 50));
         setSetMinWithdrawWhatsappLimit(String(data.minWithdrawWhatsapp || 50));
         setSetMinWithdrawFacebookLimit(String(data.minWithdrawFacebook || 50));
+        setSetMinWithdrawAdsLimit(String(data.minWithdrawAds || 50));
         setSetAppDownloadUrl(data.appDownloadLink || '');
         setSetGmailBuyPrice(String(data.gmailPrice || 15));
         setSetGmailOpenPassword(data.gmailOpenPass || 'Shihab@2025#');
@@ -575,6 +609,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setJobsMaintMsg(data.jobsMaintenanceMessage || '');
         setPostJobMaintEnabled(data.postJobMaintenanceEnabled || false);
         setPostJobMaintMsg(data.postJobMaintenanceMessage || '');
+        setPostJobAdminFee(String(data.postJobAdminFee || 0));
         setSpinMaintEnabled(data.spinMaintenanceEnabled || false);
         setSpinMaintMsg(data.spinMaintenanceMessage || '');
         setTransferMaintEnabled(data.transferMaintenanceEnabled || false);
@@ -591,6 +626,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setMissionsMaintMsg(data.missionsMaintenanceMessage || '');
         setNovashopMaintEnabled(data.novashopMaintenanceEnabled || false);
         setNovashopMaintMsg(data.novashopMaintenanceMessage || '');
+        setInvestmentMaintEnabled(data.investmentMaintenanceEnabled || false);
+        setInvestmentMaintMsg(data.investmentMaintenanceMessage || '');
         setGameMaintEnabled(data.gameMaintenanceEnabled || false);
         setGameMaintMsg(data.gameMaintenanceMessage || 'গেম সাময়িক রক্ষণাবেক্ষণের কারণে বন্ধ আছে।');
 
@@ -617,6 +654,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setAdsterraDirectLink(data.adsterraDirectLink || '');
         setAdsterraDirectReward(String(data.adsterraDirectReward ?? '0.15'));
         setAdsterraScriptCode(data.adsterraScriptCode || '');
+        setAdsterraDailyLimit(String(data.adsterraDailyLimit || 10));
       }
     });
   }, []);
@@ -701,6 +739,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   : userBalanceTypeToEdit === 'telegram' ? 'telegramBalance'
                   : userBalanceTypeToEdit === 'whatsapp' ? 'whatsappBalance'
                   : userBalanceTypeToEdit === 'facebook' ? 'facebookBalance'
+                  : userBalanceTypeToEdit === 'ads' ? 'adsBalance'
                   : 'balance';
 
       const currentBalance = (selectedUser as any)[field] || 0;
@@ -1180,6 +1219,79 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     });
   };
 
+  // --- INVESTMENT PLANS MANAGEMENT HANDLERS ---
+  const handleSaveInvestmentPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = planName.trim();
+    const cost = parseFloat(planCost);
+    const totalReturn = parseFloat(planTotalReturn);
+    const validityDays = parseInt(planValidityDays, 10);
+
+    if (!name || isNaN(cost) || isNaN(totalReturn) || isNaN(validityDays) || cost <= 0 || totalReturn <= 0 || validityDays <= 0) {
+      showToast('সব তথ্য সঠিকভাবে দিন (নাম, মূল্য, মোট আয় এবং মেয়াদ)', 'err');
+      return;
+    }
+
+    try {
+      if (editingPlanId) {
+        // Edit Mode
+        const planRef = ref(db, `investment_plans/${editingPlanId}`);
+        await update(planRef, {
+          name,
+          cost,
+          totalReturn,
+          validityDays
+        });
+        showToast('ইনভেস্টমেন্ট প্ল্যান সফলভাবে আপডেট করা হয়েছে', 'success');
+        setEditingPlanId(null);
+      } else {
+        // Add Mode
+        const plansRef = ref(db, 'investment_plans');
+        const newPlanRef = push(plansRef);
+        await set(newPlanRef, {
+          id: newPlanRef.key,
+          name,
+          cost,
+          totalReturn,
+          validityDays,
+          timestamp: Date.now()
+        });
+        showToast('নতুন ইনভেস্টমেন্ট প্ল্যান সফলভাবে যোগ করা হয়েছে', 'success');
+      }
+
+      // Reset Form
+      setPlanName('');
+      setPlanCost('');
+      setPlanTotalReturn('');
+      setPlanValidityDays('');
+    } catch (e: any) {
+      showToast('ত্রুটি: ' + e.message, 'err');
+    }
+  };
+
+  const handleEditInvestmentPlan = (plan: InvestmentPlan) => {
+    setEditingPlanId(plan.id);
+    setPlanName(plan.name);
+    setPlanCost(String(plan.cost));
+    setPlanTotalReturn(String(plan.totalReturn));
+    setPlanValidityDays(String(plan.validityDays));
+  };
+
+  const handleDeleteInvestmentPlan = (id: string) => {
+    setConfirmState({
+      title: 'প্ল্যান ডিলিট নিশ্চিতকরণ',
+      message: 'আপনি কি নিশ্চিত এই ইনভেস্টমেন্ট প্ল্যানটি ডিলিট করতে চান?',
+      onConfirm: async () => {
+        try {
+          await remove(ref(db, `investment_plans/${id}`));
+          showToast('ইনভেস্টমেন্ট প্ল্যানটি সফলভাবে মুছে ফেলা হয়েছে', 'success');
+        } catch (e: any) {
+          showToast('ত্রুটি: ' + e.message, 'err');
+        }
+      }
+    });
+  };
+
   // --- CASH WITHDRAW PENDING BILL APPROVALS ---
   const handleProcessWithdraw = async (item: WithdrawalRequest, action: 'approved' | 'rejected' | 'rejected_deduct') => {
     try {
@@ -1229,6 +1341,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const minWtele = parseFloat(setMinWithdrawTelegramLimit);
       const minWwhat = parseFloat(setMinWithdrawWhatsappLimit);
       const minWfb = parseFloat(setMinWithdrawFacebookLimit);
+      const minWads = parseFloat(setMinWithdrawAdsLimit);
       const gmailPr = parseFloat(setGmailBuyPrice);
       const telegramPr = parseFloat(setTelegramBuyPrice);
       const whatsappPr = parseFloat(setWhatsappBuyPrice);
@@ -1236,6 +1349,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const actPr = parseFloat(activationPrice);
       const gDailyLim = parseInt(gameDailyLimit);
       const gFreeRew = parseFloat(gameFreeReward);
+      const adsterraDLim = parseInt(adsterraDailyLimit);
 
       await update(ref(db, 'settings'), {
         minWithdraw: isNaN(minW) ? 50 : minW,
@@ -1243,6 +1357,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         minWithdrawTelegram: isNaN(minWtele) ? 50 : minWtele,
         minWithdrawWhatsapp: isNaN(minWwhat) ? 50 : minWwhat,
         minWithdrawFacebook: isNaN(minWfb) ? 50 : minWfb,
+        minWithdrawAds: isNaN(minWads) ? 50 : minWads,
         activationPrice: isNaN(actPr) ? 100 : actPr,
         appDownloadLink: setAppDownloadUrl.trim(),
         gmailPrice: isNaN(gmailPr) ? 15 : gmailPr,
@@ -1269,6 +1384,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         jobsMaintenanceMessage: jobsMaintMsg.trim(),
         postJobMaintenanceEnabled: postJobMaintEnabled,
         postJobMaintenanceMessage: postJobMaintMsg.trim(),
+        postJobAdminFee: isNaN(parseFloat(postJobAdminFee)) ? 0 : parseFloat(postJobAdminFee),
         spinMaintenanceEnabled: spinMaintEnabled,
         spinMaintenanceMessage: spinMaintMsg.trim(),
         transferMaintenanceEnabled: transferMaintEnabled,
@@ -1285,6 +1401,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         missionsMaintenanceMessage: missionsMaintMsg.trim(),
         novashopMaintenanceEnabled: novashopMaintEnabled,
         novashopMaintenanceMessage: novashopMaintMsg.trim(),
+        investmentMaintenanceEnabled: investmentMaintEnabled,
+        investmentMaintenanceMessage: investmentMaintMsg.trim(),
         referLink: setReferralRootLink.trim(),
         activationNumbers: {
           bkash: setBkashNumber.trim(),
@@ -1314,6 +1432,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         adsterraDirectLink: adsterraDirectLink.trim(),
         adsterraDirectReward: isNaN(parseFloat(adsterraDirectReward)) ? 0.15 : parseFloat(adsterraDirectReward),
         adsterraScriptCode: adsterraScriptCode.trim(),
+        adsterraDailyLimit: isNaN(adsterraDLim) ? 10 : adsterraDLim,
       });
 
       showToast('সব গ্লোবাল সেটিংস আপডেট করা হয়েছে!', 'success');
@@ -1564,6 +1683,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           <Globe size={13} />
           <span>অন্যান্য সাইট ({websites.length})</span>
         </button>
+        <button onClick={() => setAdminTab('plans')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'plans' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+          <TrendingUp size={13} />
+          <span>ইনভেস্টমেন্ট প্ল্যান ({investmentPlans.length})</span>
+        </button>
         <button onClick={() => setAdminTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'settings' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
           <Settings size={13} />
           <span>সেটিংস</span>
@@ -1796,6 +1919,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                         <span className="text-slate-500 font-semibold">Facebook Balance:</span>
                         <span className="text-indigo-400 font-bold">৳{(selectedUser.facebookBalance || 0).toFixed(2)}</span>
                       </div>
+                      <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
+                        <span className="text-slate-500 font-semibold">Ads Balance:</span>
+                        <span className="text-amber-400 font-bold">৳{(selectedUser.adsBalance || 0).toFixed(2)}</span>
+                      </div>
                     </div>
 
                     <div className="space-y-3.5">
@@ -1822,6 +1949,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           <option value="telegram">Telegram Balance</option>
                           <option value="whatsapp">WhatsApp Balance</option>
                           <option value="facebook">Facebook Balance</option>
+                          <option value="ads">Ads Balance</option>
                         </select>
                       </div>
 
@@ -3375,12 +3503,21 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
                         />
                       </div>
-                      <div className="space-y-1 col-span-2">
+                      <div className="space-y-1">
                         <label className="text-slate-400 text-[10px] font-bold">Facebook (৳)</label>
                         <input 
                           type="number" 
                           value={setMinWithdrawFacebookLimit}
                           onChange={(e) => setSetMinWithdrawFacebookLimit(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">Ads/Adsterra (৳)</label>
+                        <input 
+                          type="number" 
+                          value={setMinWithdrawAdsLimit}
+                          onChange={(e) => setSetMinWithdrawAdsLimit(e.target.value)}
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
                         />
                       </div>
@@ -3970,7 +4107,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                     </p>
                     
                     <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className="space-y-1">
                           <label className="text-slate-400 text-[9.5px] font-bold">Adsterra Direct Link VIP URL</label>
                           <input 
@@ -3991,6 +4128,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none text-white focus:border-amber-500 font-mono font-bold"
                           />
                         </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[9.5px] font-bold">দৈনিক অ্যাড ভিউ লিমিট (টি)</label>
+                          <input 
+                            type="number" 
+                            value={adsterraDailyLimit}
+                            onChange={(e) => setAdsterraDailyLimit(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none text-white focus:border-amber-500 font-mono font-bold"
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-1">
@@ -4001,6 +4147,29 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           onChange={(e) => setAdsterraScriptCode(e.target.value)}
                           placeholder="<!-- adsterra banner code script tag -->"
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-[10px] outline-none text-white focus:border-amber-500 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 14: মাইক্রো জবস সেটিংস (Micro Jobs Settings) */}
+                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <span className="text-[10px] text-amber-500 font-black tracking-wider uppercase block mb-1">মাইক্রো জব অ্যাডমিন ফি সেটিংস (Micro Job Admin Fee Settings)</span>
+                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">
+                      ইউজাররা নতুন ক্যাম্পেইন (Micro Job) পোস্ট করার সময় কত টাকা এডমিন ফি হিসেবে কাটা যাবে তা নির্ধারণ করুন। এই ফি না থাকলে তারা কাজ পোস্ট করতে পারবে না।
+                    </p>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">জব পোস্টিং এডমিন ফি (৳)</label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          value={postJobAdminFee}
+                          onChange={(e) => setPostJobAdminFee(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-[11px] outline-none focus:border-amber-500 font-bold font-mono text-white"
                         />
                       </div>
                     </div>
@@ -4031,6 +4200,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                     { id: 'missions', label: 'ডেইলি মিশনস (Daily Missions)', enabled: missionsMaintEnabled, setEnabled: setMissionsMaintEnabled, msg: missionsMaintMsg, setMsg: setMissionsMaintMsg, defaultMsg: 'ডেইলি মিশন ট্র্যাকার রিফ্রেশ করা হচ্ছে।' },
                     { id: 'novashop', label: 'নোভা শপ (Nova Shop Premium)', enabled: novashopMaintEnabled, setEnabled: setNovashopMaintEnabled, msg: novashopMaintMsg, setMsg: setNovashopMaintMsg, defaultMsg: 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের নোভা শপ সেবা বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।' },
                     { id: 'game', label: 'গেম ও ইনকাম (Tic Tac Toe Game)', enabled: gameMaintEnabled, setEnabled: setGameMaintEnabled, msg: gameMaintMsg, setMsg: setGameMaintMsg, defaultMsg: 'গেম সাময়িক রক্ষণাবেক্ষণের কারণে বন্ধ আছে।' },
+                    { id: 'investment', label: 'ইনভেস্টমেন্ট প্ল্যান (Investment Plans)', enabled: investmentMaintEnabled, setEnabled: setInvestmentMaintEnabled, msg: investmentMaintMsg, setMsg: setInvestmentMaintMsg, defaultMsg: 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ইনভেস্টমেন্ট সিস্টেম বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।' },
                   ].map((feat) => (
                     <div key={feat.id} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-2.5">
                       <div className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-850">
@@ -4128,6 +4298,160 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
               </button>
             </form>
 
+          </motion.div>
+        )}
+
+        {/* CARD ADMIN TAB: INVESTMENT PLANS */}
+        {adminTab === 'plans' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 shadow-sm">
+            {/* Add/Edit Plan Form Card */}
+            <form onSubmit={handleSaveInvestmentPlan} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+              <h3 className="font-bold text-white text-xs uppercase tracking-wider pb-2 border-b border-slate-800 font-sans flex items-center justify-between">
+                <span>{editingPlanId ? '🔧 ইনভেস্টমেন্ট প্ল্যান সংশোধন করুন' : '➕ নতুন ইনভেস্টমেন্ট প্ল্যান যুক্ত করুন'}</span>
+                {editingPlanId && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setEditingPlanId(null);
+                      setPlanName('');
+                      setPlanCost('');
+                      setPlanTotalReturn('');
+                      setPlanValidityDays('');
+                    }}
+                    className="text-stone-400 hover:text-white font-bold text-[10px] bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl transition"
+                  >
+                    নতুন যোগ করতে ফিরে যান
+                  </button>
+                )}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">প্ল্যানের নাম (Plan Name) *</label>
+                  <input 
+                    type="text" 
+                    placeholder="যেমন: Silver Plan, Golden Spark, Diamond Return"
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs font-semibold text-white outline-none focus:border-rose-600 transition"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">প্ল্যান অ্যাক্টিভেশন মূল্য (Cost in ৳) *</label>
+                  <input 
+                    type="number" 
+                    placeholder="যেমন: 500"
+                    value={planCost}
+                    onChange={(e) => setPlanCost(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs font-semibold text-white outline-none focus:border-rose-600 transition"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">মোট রিটার্ন / ইনকাম (Total Return in ৳) *</label>
+                  <input 
+                    type="number" 
+                    placeholder="যেমন: 700"
+                    value={planTotalReturn}
+                    onChange={(e) => setPlanTotalReturn(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs font-semibold text-white outline-none focus:border-rose-600 transition"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">প্ল্যানের মেয়াদ (Validity in Days) *</label>
+                  <input 
+                    type="number" 
+                    placeholder="যেমন: 15"
+                    value={planValidityDays}
+                    onChange={(e) => setPlanValidityDays(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs font-semibold text-white outline-none focus:border-rose-600 transition"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/80 text-[11px] text-slate-400 font-medium">
+                রিয়েল টাইম ক্যালকুলেশন: ইউজার এই প্ল্যানটি অ্যাক্টিভ করলে প্রতিদিন <span className="text-emerald-400 font-bold font-mono">৳{(parseFloat(planTotalReturn) && parseFloat(planValidityDays)) ? (parseFloat(planTotalReturn) / parseFloat(planValidityDays)).toFixed(2) : '0.00'}</span> করে মোট <span className="text-white font-bold">{planValidityDays || '0'} দিন</span> ধরে মোট <span className="text-emerald-400 font-bold font-mono">৳{planTotalReturn || '0.00'}</span> ক্লেইম করতে পারবেন।
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3 rounded-xl font-bold tracking-wider transition text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>{editingPlanId ? 'হালনাগাদ সম্পন্ন করুন ✔' : 'নতুন ইনভেস্টমেন্ট প্ল্যান যুক্ত করুন ✔'}</span>
+              </button>
+            </form>
+
+            {/* Plans List Table */}
+            <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl">
+              <h3 className="font-bold text-white text-xs uppercase tracking-wider pb-2 border-b border-slate-800 font-sans mb-4">
+                সচল ইনভেস্টমেন্ট প্ল্যানসমূহ ({investmentPlans.length})
+              </h3>
+
+              {investmentPlans.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 text-xs">
+                  এখন পর্যন্ত কোনো ইনভেস্টমেন্ট প্ল্যান তৈরি করা হয়নি। উপরে ফরমটি ব্যবহার করে প্রথম প্ল্যান যোগ করুন।
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {investmentPlans.map(plan => {
+                    const daily = (plan.totalReturn / plan.validityDays).toFixed(2);
+                    return (
+                      <div key={plan.id} className="p-4 border border-slate-800 bg-slate-900/40 rounded-2xl flex flex-col justify-between hover:scale-[1.01] transition-transform">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start border-b border-slate-800/60 pb-2">
+                            <div>
+                              <h4 className="font-extrabold text-white text-[14px]">{plan.name}</h4>
+                              <p className="text-[10px] text-slate-500 font-medium">আইডি: {plan.id}</p>
+                            </div>
+                            <span className="bg-rose-500/10 text-rose-400 border border-rose-500/25 px-2.5 py-1 rounded-full text-[11px] font-black font-mono">৳{plan.cost}</span>
+                          </div>
+
+                          <div className="space-y-1.5 pt-1 text-[11px] text-slate-300 font-sans">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">মোট রিটার্ন:</span>
+                              <span className="font-black text-emerald-400">৳{plan.totalReturn}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">মেয়াদকাল:</span>
+                              <span className="font-bold text-white">{plan.validityDays} দিন</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">দৈনিক আয়:</span>
+                              <span className="font-bold text-emerald-400">৳{daily}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 border-t border-slate-800/60 pt-3 mt-4">
+                          <button 
+                            type="button"
+                            onClick={() => handleEditInvestmentPlan(plan)}
+                            className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl text-[10px] transition flex items-center justify-center gap-1"
+                          >
+                            <Edit size={12} />
+                            <span>এডিট করুন</span>
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteInvestmentPlan(plan.id)}
+                            className="bg-rose-950/30 hover:bg-rose-900/30 border border-rose-500/20 text-rose-400 font-bold p-2 rounded-xl text-[10px] transition"
+                            title="মুছে ফেলুন"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
 
