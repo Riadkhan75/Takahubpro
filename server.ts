@@ -25,6 +25,54 @@ const PORT = 3000;
 
 server.use(express.json());
 
+// TakaHub Pro Advanced Express Security headers middleware
+server.use((req, res, next) => {
+  // Prevent Content Sniffing (MIME-Spoofing mitigation)
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // Cross-Site Scripting (XSS) Filter protection for older browsers
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Block Referral tracing to protect internal route schemas
+  res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+  
+  // HSTS (HTTP Strict Transport Security) - forces HTTPS for security
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  
+  // Custom Server masking header to hide technological stack details from automated scanner tools
+  res.setHeader('X-Powered-By', 'TakaHub Secure Shield v2.4');
+  
+  next();
+});
+
+// Lightweight In-Memory API Rate Limiter
+const apiRequestCounts = new Map<string, { count: number; resetTime: number }>();
+
+server.use('/api/', (req: any, res: any, next: any) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const windowMs = 60000; // 1 minute window
+  const maxLimit = 120;   // Allow maximum 120 API requests per minute per IP
+  
+  const clientKey = String(ip);
+  const record = apiRequestCounts.get(clientKey);
+  
+  if (!record || now > record.resetTime) {
+    apiRequestCounts.set(clientKey, { count: 1, resetTime: now + windowMs });
+    next();
+  } else {
+    record.count++;
+    if (record.count > maxLimit) {
+      console.warn(`[Security Alert] Rate-limit exceeded by suspended IP: ${clientKey}`);
+      return res.status(429).json({ 
+        error: 'Too Many Requests', 
+        message: 'নিরাপত্তার স্বার্থে অনুরোধের সংখ্যা কমানো হয়েছে। অনুগ্রহ করে ১ মিনিট পর আবার ট্রাই করুন!' 
+      });
+    }
+    next();
+  }
+});
+
 // API route health-checks
 server.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });

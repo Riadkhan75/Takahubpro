@@ -4,6 +4,11 @@ import {
   db 
 } from '../firebase';
 import { 
+  sanitizeInput, 
+  isMaliciousInput, 
+  logSecurityAlert 
+} from '../utils/security';
+import { 
   ref, 
   onValue, 
   set, 
@@ -23,7 +28,8 @@ import {
   GlobalNotification,
   ExternalWebsite,
   InvestmentPlan,
-  PurchasedPlan
+  PurchasedPlan,
+  SocialText
 } from '../types';
 import { 
   Wallet, 
@@ -57,6 +63,7 @@ import {
   XOctagon,
   Volume2,
   Facebook,
+  Instagram,
   Send,
   MessageSquare,
   Eye,
@@ -539,7 +546,7 @@ interface UserAppProps {
 }
 
 export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, isAdminUser, onSwitchToNovaShop }: UserAppProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'investment-plans'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'investment-plans'>('home');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
@@ -549,6 +556,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [investmentPlans, setInvestmentPlans] = useState<InvestmentPlan[]>([]);
   const [purchasedPlans, setPurchasedPlans] = useState<PurchasedPlan[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [socialTexts, setSocialTexts] = useState<SocialText[]>([]);
+
 
   // Tic Tac Toe Game states
   const [tttBoard, setTttBoard] = useState<(string | null)[]>(Array(9).fill(null));
@@ -641,6 +650,14 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [showTelegramMasterPass, setShowTelegramMasterPass] = useState(false);
   const [showWhatsappMasterPass, setShowWhatsappMasterPass] = useState(false);
   const [showFacebookMasterPass, setShowFacebookMasterPass] = useState(false);
+  const [showInstagramMasterPass, setShowInstagramMasterPass] = useState(false);
+
+  // Instagram Sell states
+  const [instagramUsername, setInstagramUsername] = useState('');
+  const [instagramPassword, setInstagramPassword] = useState('');
+  const [instagram2FA, setInstagram2FA] = useState('');
+  const [instagramMessage, setInstagramMessage] = useState({ text: '', type: '' });
+  const [isSubmittingInstagram, setIsSubmittingInstagram] = useState(false);
 
   // Form states
   const [gmailEmail, setGmailEmail] = useState('');
@@ -673,7 +690,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
 
   const [withdrawMethod, setWithdrawMethod] = useState<'Bkash' | 'Nagad'>('Bkash');
-  const [withdrawBalanceType, setWithdrawBalanceType] = useState<'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook'>('main');
+  const [withdrawBalanceType, setWithdrawBalanceType] = useState<'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram'>('main');
   const [withdrawNumber, setWithdrawNumber] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawMessage, setWithdrawMessage] = useState({ text: '', type: '' });
@@ -842,6 +859,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           minWithdrawTelegram: data.minWithdrawTelegram || 50,
           minWithdrawWhatsapp: data.minWithdrawWhatsapp || 50,
           minWithdrawFacebook: data.minWithdrawFacebook || 50,
+          minWithdrawInstagram: data.minWithdrawInstagram || 50,
           minWithdrawAds: data.minWithdrawAds || 50,
           referLink: data.referLink || window.location.origin,
           appDownloadLink: data.appDownloadLink || '',
@@ -849,10 +867,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           telegramOpenPass: data.telegramOpenPass || 'Shihab@2025#',
           whatsappOpenPass: data.whatsappOpenPass || 'Shihab@2025#',
           facebookOpenPass: data.facebookOpenPass || 'Shihab@2025#',
+          instagramOpenPass: data.instagramOpenPass || 'Shihab@2025#',
           gmailPrice: data.gmailPrice || 15,
           telegramPrice: data.telegramPrice || 20,
           whatsappPrice: data.whatsappPrice || 30,
           facebookPrice: data.facebookPrice || 25,
+          instagramPrice: data.instagramPrice || 20,
           activationNumbers: data.activationNumbers || {
             bkash: '01727172701',
             nagad: '01934984690'
@@ -873,6 +893,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           whatsappMaintenanceMessage: data.whatsappMaintenanceMessage || '',
           facebookMaintenanceEnabled: data.facebookMaintenanceEnabled ?? false,
           facebookMaintenanceMessage: data.facebookMaintenanceMessage || '',
+          instagramMaintenanceEnabled: data.instagramMaintenanceEnabled ?? false,
+          instagramMaintenanceMessage: data.instagramMaintenanceMessage || '',
           jobsMaintenanceEnabled: data.jobsMaintenanceEnabled ?? false,
           jobsMaintenanceMessage: data.jobsMaintenanceMessage || '',
           postJobMaintenanceEnabled: data.postJobMaintenanceEnabled ?? false,
@@ -1029,6 +1051,25 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         setWebsites(websList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
       } else {
         setWebsites([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to Custom Admin Social Texts
+  useEffect(() => {
+    const socialTextsRef = ref(db, 'social_texts');
+    const unsubscribe = onValue(socialTextsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })) as SocialText[];
+        setSocialTexts(list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+      } else {
+        setSocialTexts([]);
       }
     });
 
@@ -1549,7 +1590,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   // Submit Trx Verification Request
   const handleActivationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verificationTrx.trim() || !verificationNumber.trim()) {
+    const cleanNum = sanitizeInput(verificationNumber.trim());
+    const cleanTrx = sanitizeInput(verificationTrx.trim().toUpperCase());
+
+    if (isMaliciousInput(cleanNum) || isMaliciousInput(cleanTrx)) {
+      setVerificationMessage({ text: '⚠️ অননুমোদিত ক্যারেক্টার বা স্ক্রিপ্ট সনাক্ত হয়েছে!', type: 'error' });
+      logSecurityAlert(userId, userEmail, 'XSS Attempt on Activation Form', `Num: ${cleanNum}, Trx: ${cleanTrx}`);
+      return;
+    }
+
+    if (!cleanTrx || !cleanNum) {
       setVerificationMessage({ text: 'বিকাশ/নগদ নম্বর এবং TrxID প্রদান করুন', type: 'error' });
       return;
     }
@@ -1566,8 +1616,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         username: userData?.username || 'User',
         userEmail: userEmail,
         method: selectedVerifyMethod,
-        number: verificationNumber,
-        trxId: verificationTrx.toUpperCase().trim(),
+        number: cleanNum,
+        trxId: cleanTrx,
         status: 'pending',
         timestamp: Date.now()
       };
@@ -1598,6 +1648,28 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     }
   };
 
+  const isDeadlinePassed = (deadlineStr?: string) => {
+    if (!deadlineStr) return false;
+    const deadlineTime = new Date(deadlineStr).getTime();
+    if (isNaN(deadlineTime)) return false;
+    return Date.now() > deadlineTime;
+  };
+
+  const formatDeadline = (deadlineStr?: string) => {
+    if (!deadlineStr) return '';
+    const date = new Date(deadlineStr);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleString('bn-BD', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Dhaka'
+    });
+  };
+
   // Submit Gmail Sell Request
   const handleGmailSell = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1606,8 +1678,22 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       triggerToast('⚠️ এই ফিচারটি ব্যবহার করার জন্য প্রথমে আপনার অ্যাকাউন্টটি সক্রিয় করা আবশ্যক!', 'error');
       return;
     }
-    if (!gmailEmail.trim() || !gmailPassword.trim()) {
-      setGmailMessage({ text: 'সব বক্সে তথ্য দিন', type: 'error' });
+    if (isDeadlinePassed(globalSettings.gmailLastDate)) {
+      setGmailMessage({ text: `⚠️ দুঃখিত, জিমেইল সাবমিট করার শেষ সময় (${formatDeadline(globalSettings.gmailLastDate)}) অতিবাহিত হয়ে গেছে!`, type: 'error' });
+      triggerToast('সাবমিটের সময় শেষ হয়ে গেছে!', 'error');
+      return;
+    }
+    const cleanEmail = sanitizeInput(gmailEmail.trim());
+    const cleanPass = sanitizeInput(gmailPassword.trim());
+
+    if (isMaliciousInput(cleanEmail) || isMaliciousInput(cleanPass)) {
+      setGmailMessage({ text: '⚠️ অননুমোদিত ক্যারেক্টার বা ক্ষতিকারক কোনো স্ক্রিপ্ট সনাক্ত হয়েছে!', type: 'error' });
+      logSecurityAlert(userId, userEmail, 'XSS Attempt on Gmail Sale Form', `Email: ${cleanEmail}`);
+      return;
+    }
+
+    if (!cleanEmail || !cleanPass) {
+      setGmailMessage({ text: 'সব بক্সে সঠিক তথ্য দিন', type: 'error' });
       return;
     }
 
@@ -1621,14 +1707,14 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         id: newSaleRef.key,
         userId: userId,
         username: userData?.username || 'Unknown User',
-        email: gmailEmail.trim(),
-        password: gmailPassword.trim(),
+        email: cleanEmail,
+        password: cleanPass,
         status: 'pending',
         timestamp: Date.now()
       });
 
       // Telegram alert
-      const tgGmailMessage = `📧 <b>নতুন জিমেইল বিক্রির আবেদন (New Gmail Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n🔑 ইমেইল: <code>${gmailEmail.trim()}</code>\n🔒 পাসওয়ার্ড: <code>${gmailPassword.trim()}</code>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.gmailPrice || 15}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল থেকে ওটিপি চেক করে ভেরিফাই করুন।`;
+      const tgGmailMessage = `📧 <b>নতুন জিমেইল বিক্রির আবেদন (New Gmail Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n🔑 ইমেইল: <code>${cleanEmail}</code>\n🔒 পাসওয়ার্ড: <code>${cleanPass}</code>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.gmailPrice || 15}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল থেকে ওটিপি চেক করে ভেরিফাই করুন।`;
       sendAdminTelegramNotification(tgGmailMessage);
 
       setGmailMessage({ text: 'জিমেইল সফলভাবে বিক্রির জন্য পাঠানো হয়েছে! এডমিনের ভেরিফিকেশনের পর ব্যালেন্স এড হবে।', type: 'success' });
@@ -1648,6 +1734,11 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     if (!userData?.isActive && !isAdminUser && !globalSettings.freeActivationEnabled) {
       setIsVerificationModalOpen(true);
       triggerToast('⚠️ এই ফিচারটি ব্যবহার করার জন্য প্রথমে আপনার অ্যাকাউন্টটি সক্রিয় করা আবশ্যক!', 'error');
+      return;
+    }
+    if (isDeadlinePassed(globalSettings.telegramLastDate)) {
+      setTelegramMessage({ text: `⚠️ দুঃখিত, টেলিগ্রাম সাবমিট করার শেষ সময় (${formatDeadline(globalSettings.telegramLastDate)}) অতিবাহিত হয়ে গেছে!`, type: 'error' });
+      triggerToast('সাবমিটের সময় শেষ হয়ে গেছে!', 'error');
       return;
     }
     if (!telegramNumber.trim()) {
@@ -1694,6 +1785,11 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       triggerToast('⚠️ এই ফিচারটি ব্যবহার করার জন্য প্রথমে আপনার অ্যাকাউন্টটি সক্রিয় করা আবশ্যক!', 'error');
       return;
     }
+    if (isDeadlinePassed(globalSettings.whatsappLastDate)) {
+      setWhatsappMessage({ text: `⚠️ দুঃখিত, হোয়াটসঅ্যাপ সাবমিট করার শেষ সময় (${formatDeadline(globalSettings.whatsappLastDate)}) অতিবাহিত হয়ে গেছে!`, type: 'error' });
+      triggerToast('সাবমিটের সময় শেষ হয়ে গেছে!', 'error');
+      return;
+    }
     if (!whatsappNumber.trim()) {
       setWhatsappMessage({ text: 'হোয়াটসঅ্যাপ নাম্বারটি দিন।', type: 'error' });
       return;
@@ -1738,6 +1834,11 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       triggerToast('⚠️ এই ফিচারটি ব্যবহার করার জন্য প্রথমে আপনার অ্যাকাউন্টটি সক্রিয় করা আবশ্যক!', 'error');
       return;
     }
+    if (isDeadlinePassed(globalSettings.facebookLastDate)) {
+      setFacebookMessage({ text: `⚠️ দুঃখিত, ফেসবুক সাবমিট করার শেষ সময় (${formatDeadline(globalSettings.facebookLastDate)}) অতিবাহিত হয়ে গেছে!`, type: 'error' });
+      triggerToast('সাবমিটের সময় শেষ হয়ে গেছে!', 'error');
+      return;
+    }
     if (!facebookEmail.trim() || !facebookPassword.trim()) {
       setFacebookMessage({ text: 'লগইন ইমেইল/ফোন এবং পাসওয়ার্ড দিন।', type: 'error' });
       return;
@@ -1773,6 +1874,57 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       setFacebookMessage({ text: 'সমস্যা হয়েছে: ' + err.message, type: 'error' });
     } finally {
       setIsSubmittingFacebook(false);
+    }
+  };
+
+  // Submit Instagram Sell Request
+  const handleInstagramSell = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userData?.isActive && !isAdminUser && !globalSettings.freeActivationEnabled) {
+      setIsVerificationModalOpen(true);
+      triggerToast('⚠️ এই ফিচারটি ব্যবহার করার জন্য প্রথমে আপনার অ্যাকাউন্টটি সক্রিয় করা আবশ্যক!', 'error');
+      return;
+    }
+    if (isDeadlinePassed(globalSettings.instagramLastDate)) {
+      setInstagramMessage({ text: `⚠️ দুঃখিত, ইন্সটাগ্রাম সাবমিট করার শেষ সময় (${formatDeadline(globalSettings.instagramLastDate)}) অতিবাহিত হয়ে গেছে!`, type: 'error' });
+      triggerToast('সাবমিটের সময় শেষ হয়ে গেছে!', 'error');
+      return;
+    }
+    if (!instagramUsername.trim() || !instagramPassword.trim()) {
+      setInstagramMessage({ text: 'ইউজারনেম/ইমেইল এবং পাসওয়ার্ড দিন।', type: 'error' });
+      return;
+    }
+
+    setIsSubmittingInstagram(true);
+    setInstagramMessage({ text: '', type: '' });
+
+    try {
+      const salesRef = ref(db, 'instagram_sells');
+      const newSaleRef = push(salesRef);
+      await set(newSaleRef, {
+        id: newSaleRef.key,
+        userId: userId,
+        username: userData?.username || 'Unknown User',
+        email: instagramUsername.trim(),
+        password: instagramPassword.trim(),
+        twoFactor: instagram2FA.trim(),
+        status: 'pending',
+        timestamp: Date.now()
+      });
+
+      // Telegram alert
+      const tgInstagramMessage = `📸 <b>নতুন ইন্সটাগ্রাম বিক্রির আবেদন (New Instagram Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n📧 ইউজারনেম/ইমেইল: <code>${instagramUsername.trim()}</code>\n🔒 পাসওয়ার্ড: <code>${instagramPassword.trim()}</code>\n🔐 2FA কোড/কী: <code>${instagram2FA.trim() || 'নেই'}</code>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.instagramPrice || 20}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল চেক করুন।`;
+      sendAdminTelegramNotification(tgInstagramMessage);
+
+      setInstagramMessage({ text: 'ইন্সটাগ্রাম আইডি সফলভাবে বিক্রির জন্য পাঠানো হয়েছে! এডমিনের ভেরিফিকেশনের পর ব্যালেন্স এড হবে।', type: 'success' });
+      setInstagramUsername('');
+      setInstagramPassword('');
+      setInstagram2FA('');
+      triggerToast('ইন্সটাগ্রাম আইডি জমা হয়েছে!', 'success');
+    } catch (err: any) {
+      setInstagramMessage({ text: 'সমস্যা হয়েছে: ' + err.message, type: 'error' });
+    } finally {
+      setIsSubmittingInstagram(false);
     }
   };
 
@@ -1882,6 +2034,10 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       minLimit = globalSettings.minWithdrawFacebook || globalSettings.minWithdraw || 50;
       availableBalance = userData?.facebookBalance || 0;
       balanceField = 'facebookBalance';
+    } else if (withdrawBalanceType === 'instagram') {
+      minLimit = globalSettings.minWithdrawInstagram || globalSettings.minWithdraw || 50;
+      availableBalance = userData?.instagramBalance || 0;
+      balanceField = 'instagramBalance';
     } else if (withdrawBalanceType === 'ads') {
       minLimit = globalSettings.minWithdrawAds || globalSettings.minWithdraw || 50;
       availableBalance = userData?.adsBalance || 0;
@@ -3212,6 +3368,28 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               <ChevronRight size={18} className="text-stone-400" />
             </div>
 
+            {/* Instagram Account Sell Gateway card */}
+            <div 
+              onClick={() => switchTab('instagram-sell')}
+              className="bg-white border border-stone-200 p-4 rounded-2xl flex items-center justify-between shadow-xs hover:border-stone-300 cursor-pointer transition active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
+                  <Instagram size={22} className="text-rose-500" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-stone-800 text-sm">ইন্সটাগ্রাম আইডি বিক্রি (Instagram Sell)</h3>
+                    {globalSettings.instagramMaintenanceEnabled && (
+                      <span className="bg-amber-100 text-amber-800 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">রক্ষণাবেক্ষণ</span>
+                    )}
+                  </div>
+                  <p className="text-stone-500 text-xs mt-0.5">পুরাতন ইন্সটাগ্রাম আইডি বিক্রি - প্রতি পিস ৳{globalSettings.instagramPrice || 20}</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-stone-400" />
+            </div>
+
             {/* Campaign Poster Creator Action gateway */}
             <div 
               onClick={() => switchTab('post-job')}
@@ -3594,15 +3772,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-full">
                   <label className="text-xs font-bold text-stone-700 block pl-1">উৎস ব্যালেন্স নির্বাচন করুন (Withdrawal Fund Source)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                     {[
                       { type: 'main', label: 'Main Bal', bal: userData?.balance || 0, min: globalSettings.minWithdraw || 50 },
                       { type: 'gmail', label: 'Gmail', bal: userData?.gmailBalance || 0, min: globalSettings.minWithdrawGmail || 50 },
                       { type: 'telegram', label: 'Telegram', bal: userData?.telegramBalance || 0, min: globalSettings.minWithdrawTelegram || 50 },
                       { type: 'whatsapp', label: 'WhatsApp', bal: userData?.whatsappBalance || 0, min: globalSettings.minWithdrawWhatsapp || 50 },
                       { type: 'facebook', label: 'Facebook', bal: userData?.facebookBalance || 0, min: globalSettings.minWithdrawFacebook || 50 },
+                      { type: 'instagram', label: 'Instagram', bal: userData?.instagramBalance || 0, min: globalSettings.minWithdrawInstagram || 50 },
                       { type: 'ads', label: 'Ads Bal', bal: userData?.adsBalance || 0, min: globalSettings.minWithdrawAds || 50 }
                     ].map((item) => (
                       <div 
@@ -3642,6 +3821,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       withdrawBalanceType === 'telegram' ? (globalSettings.minWithdrawTelegram || 50) : 
                       withdrawBalanceType === 'whatsapp' ? (globalSettings.minWithdrawWhatsapp || 50) : 
                       withdrawBalanceType === 'facebook' ? (globalSettings.minWithdrawFacebook || 50) : 
+                      withdrawBalanceType === 'instagram' ? (globalSettings.minWithdrawInstagram || 50) : 
                       (globalSettings.minWithdraw || 50)
                     }`}
                     value={withdrawAmount}
@@ -3828,6 +4008,15 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     <span className="mt-2 inline-block bg-red-50 text-red-650 font-black text-base px-4 py-1.5 rounded-full border border-red-100">
                       ৳{globalSettings.gmailPrice} (প্রতি পিস)
                     </span>
+                    {globalSettings.gmailLastDate && (
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.gmailLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                        <div className="flex items-center gap-1">
+                          <span>🕒 সাবমিট করার শেষ সময়:</span>
+                        </div>
+                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.gmailLastDate)}</span>
+                        {isDeadlinePassed(globalSettings.gmailLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর জিমেইল আইডি সাবমিট করা যাবে না।</span>}
+                      </div>
+                    )}
                   </div>
 
                   {/* Password credentials to configure */}
@@ -3941,6 +4130,15 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     <span className="mt-2 inline-block bg-sky-50 text-sky-655 font-black text-base px-4 py-1.5 rounded-full border border-sky-100">
                       ৳{globalSettings.telegramPrice || 20} (প্রতি পিস)
                     </span>
+                    {globalSettings.telegramLastDate && (
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.telegramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                        <div className="flex items-center gap-1">
+                          <span>🕒 সাবমিট করার শেষ সময়:</span>
+                        </div>
+                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.telegramLastDate)}</span>
+                        {isDeadlinePassed(globalSettings.telegramLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর টেলিগ্রাম আইডি সাবমিট করা যাবে না।</span>}
+                      </div>
+                    )}
                   </div>
 
                   {/* Password credentials to configure */}
@@ -4006,6 +4204,21 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       </div>
                     )}
 
+                    {/* Admin Guidelines / Custom Texts */}
+                    {socialTexts.filter(t => t.platform === 'telegram').length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-2 mt-4 text-left">
+                        <h5 className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-sky-600 rounded-full"></span>
+                          এডমিন নির্দেশাবলী (Admin Guidelines)
+                        </h5>
+                        <ul className="list-disc pl-4 text-stone-600 text-xs space-y-1 font-medium leading-relaxed">
+                          {socialTexts.filter(t => t.platform === 'telegram').map(t => (
+                            <li key={t.id}>{t.text}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     <button 
                       type="submit"
                       disabled={isSubmittingTelegram}
@@ -4053,6 +4266,15 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     <span className="mt-2 inline-block bg-emerald-50 text-emerald-650 font-black text-base px-4 py-1.5 rounded-full border border-emerald-100">
                       ৳{globalSettings.whatsappPrice || 30} (প্রতি পিস)
                     </span>
+                    {globalSettings.whatsappLastDate && (
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.whatsappLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                        <div className="flex items-center gap-1">
+                          <span>🕒 সাবমিট করার শেষ সময়:</span>
+                        </div>
+                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.whatsappLastDate)}</span>
+                        {isDeadlinePassed(globalSettings.whatsappLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর হোয়াটসঅ্যাপ আইডি সাবমিট করা যাবে না।</span>}
+                      </div>
+                    )}
                   </div>
 
                   {/* Password credentials to configure */}
@@ -4118,6 +4340,21 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       </div>
                     )}
 
+                    {/* Admin Guidelines / Custom Texts */}
+                    {socialTexts.filter(t => t.platform === 'whatsapp').length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-2 mt-4 text-left">
+                        <h5 className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></span>
+                          এডমিন নির্দেশাবলী (Admin Guidelines)
+                        </h5>
+                        <ul className="list-disc pl-4 text-stone-600 text-xs space-y-1 font-medium leading-relaxed">
+                          {socialTexts.filter(t => t.platform === 'whatsapp').map(t => (
+                            <li key={t.id}>{t.text}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     <button 
                       type="submit"
                       disabled={isSubmittingWhatsapp}
@@ -4165,6 +4402,15 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     <span className="mt-2 inline-block bg-indigo-50 text-indigo-650 font-black text-base px-4 py-1.5 rounded-full border border-indigo-100">
                       ৳{globalSettings.facebookPrice || 25} (প্রতি পিস)
                     </span>
+                    {globalSettings.facebookLastDate && (
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.facebookLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                        <div className="flex items-center gap-1">
+                          <span>🕒 সাবমিট করার শেষ সময়:</span>
+                        </div>
+                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.facebookLastDate)}</span>
+                        {isDeadlinePassed(globalSettings.facebookLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর ফেসবুক আইডি সাবমিট করা যাবে না।</span>}
+                      </div>
+                    )}
                   </div>
 
                   {/* Password credentials to configure */}
@@ -4243,12 +4489,176 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       </div>
                     )}
 
+                    {/* Admin Guidelines / Custom Texts */}
+                    {socialTexts.filter(t => t.platform === 'facebook').length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-2 mt-4 text-left">
+                        <h5 className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full"></span>
+                          এডমিন নির্দেশাবলী (Admin Guidelines)
+                        </h5>
+                        <ul className="list-disc pl-4 text-stone-600 text-xs space-y-1 font-medium leading-relaxed">
+                          {socialTexts.filter(t => t.platform === 'facebook').map(t => (
+                            <li key={t.id}>{t.text}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     <button 
                       type="submit"
                       disabled={isSubmittingFacebook}
                       className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer text-sm"
                     >
                       {isSubmittingFacebook ? 'জমা হচ্ছে...' : 'বিক্রি করতে জমা দিন ✔'}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* VIEW: INSTAGRAM SELL */}
+        {activeTab === 'instagram-sell' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-300 bg-white hover:bg-stone-50 font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs">
+              <ChevronRight size={14} className="rotate-180" /> Back
+            </button>
+
+            <h2 className="text-lg font-bold text-stone-800 tracking-tight">ইন্সটাগ্রাম আইডি sell করে বোনাস ইনকাম</h2>
+
+            <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
+              {globalSettings.instagramMaintenanceEnabled ? (
+                <div className="text-center py-6 flex flex-col items-center space-y-3">
+                  <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
+                    <AlertOctagon size={24} />
+                  </div>
+                  <h4 className="font-extrabold text-stone-800 text-sm">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h4>
+                  <p className="text-stone-600 text-xs text-center font-medium bg-amber-50 border border-amber-200/55 p-3 rounded-xl max-w-sm leading-relaxed">
+                    {globalSettings.instagramMaintenanceMessage || 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ইন্সটাগ্রাম বিক্রয় সেবা বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center py-2 flex flex-col items-center">
+                    <div className="w-14 h-14 bg-[#fa7e1e]/10 text-[#fa7e1e] rounded-full flex items-center justify-center mb-3 shadow-xs font-bold text-lg">
+                      I
+                    </div>
+                    <h4 className="font-extrabold text-stone-800 text-sm">পুরাতন ইন্সটাগ্রাম একাউন্ট বিক্রি করুন</h4>
+                    <p className="text-stone-500 text-xs mt-1 leading-relaxed">
+                      নিচে সমস্ত সঠিক লগইন ক্রেডেনশিয়াল প্রদান করে জমা দিন। এডমিনের ভেরিফিকেশনের পর আপনি পাবেন:
+                    </p>
+                    <span className="mt-2 inline-block bg-[#fa7e1e]/10 text-[#fa7e1e] font-black text-base px-4 py-1.5 rounded-full border border-[#fa7e1e]/20">
+                      ৳{globalSettings.instagramPrice || 20} (প্রতি পিস)
+                    </span>
+                    {globalSettings.instagramLastDate && (
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.instagramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                        <div className="flex items-center gap-1">
+                          <span>🕒 সাবমিট করার শেষ সময়:</span>
+                        </div>
+                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.instagramLastDate)}</span>
+                        {isDeadlinePassed(globalSettings.instagramLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর ইন্সটাগ্রাম আইডি সাবমিট করা যাবে না।</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Password credentials to configure */}
+                  {!globalSettings.hideMasterPasswords && (
+                    <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex justify-between items-start text-xs ANONYMOUS_PASS_CARD">
+                      <div>
+                        <span className="text-stone-500 font-semibold">মাস্টার পাসওয়ার্ড:</span>
+                        <div className="font-bold text-stone-800 mt-0.5 text-sm font-mono" id="instagram-open-pass">
+                          {showInstagramMasterPass ? (globalSettings.instagramOpenPass || 'Shihab@2025#') : '••••••••••••'}
+                        </div>
+                        <p className="text-[10px] text-amber-700/90 font-bold mt-1">
+                          এই পাসওয়ার্ডটি অ্যাকাউন্ট তৈরি করতে ব্যবহার করুন
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <button 
+                          type="button"
+                          onClick={() => setShowInstagramMasterPass(!showInstagramMasterPass)}
+                          className="bg-white/80 hover:bg-white text-stone-700 p-1.5 rounded-lg border border-stone-200 transition flex items-center justify-center cursor-pointer shadow-2xs"
+                          title={showInstagramMasterPass ? "লুকিয়ে রাখুন" : "পাসওয়ার্ড দেখুন"}
+                        >
+                          {showInstagramMasterPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handleCopy(globalSettings.instagramOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
+                          className="bg-[#764ba2] hover:bg-[#667eea] text-white text-[10px] font-bold py-1.5 px-3.5 rounded-lg shadow-sm transition"
+                        >
+                          কপি
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleInstagramSell} className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-stone-700 block pl-1">ইন্সটাগ্রাম ইউজারনেম / লগইন ইমেইল</label>
+                      <input 
+                        type="text" 
+                        placeholder="example_username or Email Address"
+                        value={instagramUsername}
+                        onChange={(e) => setInstagramUsername(e.target.value)}
+                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition font-semibold"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-stone-700 block pl-1">ইন্সটাগ্রাম পাসওয়ার্ড</label>
+                      <input 
+                        type="text" 
+                        placeholder="ইন্সটাগ্রাম অ্যাকাউন্টের সঠিক পাসওয়ার্ড দিন"
+                        value={instagramPassword}
+                        onChange={(e) => setInstagramPassword(e.target.value)}
+                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition font-semibold"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-stone-700 block pl-1">২-ফ্যাক্টর ব্যাকআপ ওটিপি / কোড (2FA Code / Backup Code)</label>
+                      <input 
+                        type="text" 
+                        placeholder="2FA 6-digit backup code (বাধ্যতামূলক ও অত্যন্ত জরুরি)"
+                        value={instagram2FA}
+                        onChange={(e) => setInstagram2FA(e.target.value)}
+                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition font-mono font-extrabold"
+                        required
+                      />
+                    </div>
+
+                    {instagramMessage.text && (
+                      <div className={`p-4 rounded-2xl text-xs font-bold leading-relaxed flex items-center gap-2 ${instagramMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
+                        {instagramMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                        <span>{instagramMessage.text}</span>
+                      </div>
+                    )}
+
+                    {/* Admin Guidelines / Custom Texts */}
+                    {socialTexts.filter(t => t.platform === 'instagram').length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-2 mt-4 text-left">
+                        <h5 className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-[#fa7e1e] rounded-full"></span>
+                          এডমিন নির্দেশাবলী (Admin Guidelines)
+                        </h5>
+                        <ul className="list-disc pl-4 text-stone-600 text-xs space-y-1 font-medium leading-relaxed">
+                          {socialTexts.filter(t => t.platform === 'instagram').map(t => (
+                            <li key={t.id}>{t.text}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <button 
+                      type="submit"
+                      disabled={isSubmittingInstagram}
+                      className="w-full bg-gradient-to-r from-[#fa7e1e] to-[#d62976] hover:opacity-90 text-white font-bold py-4 rounded-2xl shadow-lg transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer text-sm"
+                    >
+                      {isSubmittingInstagram ? 'জমা হচ্ছে...' : 'বিক্রি করতে জমা দিন ✔'}
                     </button>
                   </form>
                 </>

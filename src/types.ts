@@ -7,6 +7,7 @@ export interface UserData {
   telegramBalance?: number;
   whatsappBalance?: number;
   facebookBalance?: number;
+  instagramBalance?: number;
   adsBalance?: number;
   isActive: boolean;
   referCode: string;
@@ -69,6 +70,17 @@ export interface WhatsappSellRequest {
 }
 
 export interface FacebookSellRequest {
+  id: string;
+  userId: string;
+  username: string;
+  email: string;
+  password: string;
+  twoFactor: string;
+  status: 'pending';
+  timestamp: number;
+}
+
+export interface InstagramSellRequest {
   id: string;
   userId: string;
   username: string;
@@ -161,6 +173,7 @@ export interface GlobalSettings {
   minWithdrawTelegram?: number;
   minWithdrawWhatsapp?: number;
   minWithdrawFacebook?: number;
+  minWithdrawInstagram?: number;
   minWithdrawAds?: number;
   referLink: string;
   appDownloadLink: string;
@@ -168,10 +181,12 @@ export interface GlobalSettings {
   telegramOpenPass?: string;
   whatsappOpenPass?: string;
   facebookOpenPass?: string;
+  instagramOpenPass?: string;
   gmailPrice: number;
   telegramPrice?: number;
   whatsappPrice?: number;
   facebookPrice?: number;
+  instagramPrice?: number;
   activationNumbers?: {
     bkash: string;
     nagad: string;
@@ -238,6 +253,13 @@ export interface GlobalSettings {
   adsterraDailyLimit?: number;
   investmentMaintenanceEnabled?: boolean;
   investmentMaintenanceMessage?: string;
+  instagramMaintenanceEnabled?: boolean;
+  instagramMaintenanceMessage?: string;
+  gmailLastDate?: string;
+  telegramLastDate?: string;
+  whatsappLastDate?: string;
+  facebookLastDate?: string;
+  instagramLastDate?: string;
 }
 
 export interface ExternalWebsite {
@@ -279,3 +301,11 @@ export interface PurchasedPlan {
   daysClaimed?: number;
   status: 'active' | 'completed';
 }
+
+export interface SocialText {
+  id: string;
+  platform: 'facebook' | 'instagram' | 'telegram' | 'whatsapp';
+  text: string;
+  timestamp: number;
+}
+

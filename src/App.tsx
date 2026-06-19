@@ -23,6 +23,12 @@ import { UserData } from './types';
 import UserApp from './components/UserApp';
 import AdminPanel from './components/AdminPanel';
 import NovaShopApp from './components/NovaShopApp';
+import { 
+  initializeSecurityShield, 
+  sanitizeInput, 
+  isMaliciousInput, 
+  logSecurityAlert 
+} from './utils/security';
 import NovaShopAdmin from './components/NovaShopAdmin';
 import { 
   Wallet, 
@@ -70,8 +76,29 @@ export default function App() {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminPreviewMode, setIsAdminPreviewMode] = useState(true); // Toggle user view inside admin
+  const [subAdmins, setSubAdmins] = useState<any[]>([]);
   const [activeApp, setActiveApp] = useState<'takahub' | 'novashop'>('takahub');
   const [siteMaintenance, setSiteMaintenance] = useState<{ enabled: boolean, message: string }>({ enabled: false, message: '' });
+  const [securityMessage, setSecurityMessage] = useState<string | null>(null);
+
+  // Advanced Security Shield Mounting
+  useEffect(() => {
+    const handleViolation = (msg: string) => {
+      setSecurityMessage(msg);
+      // Automatically fades away the floating alert after 3.5 seconds
+      const timer = setTimeout(() => {
+        setSecurityMessage(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    };
+
+    const cleanup = initializeSecurityShield(
+      firebaseUser?.uid || null,
+      firebaseUser?.email || null,
+      handleViolation
+    );
+    return () => cleanup();
+  }, [firebaseUser]);
 
   // Authentication Switch Form State
   const [isLoginTab, setIsLoginTab] = useState(true);
@@ -147,30 +174,50 @@ export default function App() {
     };
   }, []);
 
+  // 1c. Load Sub-admins database node
+  useEffect(() => {
+    const subAdminsRef = ref(db, 'sub_admins');
+    const unsubscribe = onValue(subAdminsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.values(data);
+        setSubAdmins(list);
+      } else {
+        setSubAdmins([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // 2. Track Auth state change
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       setIsLoadingAuth(true);
-
-      if (user) {
-        // Detect if admin user `banglag215@gmail.com`
-        if (user.email === 'banglag215@gmail.com') {
-          setIsAdmin(true);
-          setIsAdminPreviewMode(true); // default to Admin Panel
-        } else {
-          setIsAdmin(false);
-          setIsAdminPreviewMode(false);
-        }
-      } else {
-        setIsAdmin(false);
-        setIsAdminPreviewMode(false);
-      }
       setIsLoadingAuth(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Dynamic admin role check
+  useEffect(() => {
+    if (firebaseUser) {
+      const email = (firebaseUser.email || '').toLowerCase().trim();
+      const isSuper = email === 'banglag215@gmail.com' || email === 'nazrulpost75@gmail.com';
+      const isSub = subAdmins.some((sa: any) => sa.email && sa.email.toLowerCase().trim() === email);
+      
+      if (isSuper || isSub) {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+        setIsAdminPreviewMode(false);
+      }
+    } else {
+      setIsAdmin(false);
+      setIsAdminPreviewMode(false);
+    }
+  }, [firebaseUser, subAdmins]);
 
   const handleLogout = async () => {
     try {
@@ -235,8 +282,15 @@ export default function App() {
     
     const email = authEmail.trim();
     const pass = authPassword;
-    const name = authFullName.trim();
+    const name = sanitizeInput(authFullName.trim());
     const devId = getBrowserDeviceId();
+
+    // Malicious query validation
+    if (isMaliciousInput(email) || isMaliciousInput(name) || isMaliciousInput(pass)) {
+      setAuthError('অননুমোদিত বা ক্ষতিকারক কোনো ক্যারেক্টার সনাক্ত হয়েছে! অনুগ্রহ করে সঠিক তথ্য প্রদান করুন।');
+      logSecurityAlert(null, email, 'Malicious Input Injection Blocked', `Email: ${email}, Name: ${name}`);
+      return;
+    }
 
     if (!email || !pass) {
       setAuthError('দয়া করে ইমেইল ও পাসওয়ার্ড প্রদান করুন');
@@ -247,7 +301,7 @@ export default function App() {
 
     if (isLoginTab) {
       // --- LOG IN ACTION ---
-      if (siteMaintenance.enabled && email !== 'banglag215@gmail.com') {
+      if (siteMaintenance.enabled && email !== 'banglag215@gmail.com' && email !== 'nazrulpost75@gmail.com') {
         setAuthError('দুঃখিত, বর্তমানে ফুল সাইট মেইনটেন্যান্স চলছে। শুধুমাত্র এডমিন প্রবেশ করতে পারবেন।');
         setIsSubmittingAuth(false);
         return;
@@ -285,7 +339,7 @@ export default function App() {
         }
         setAuthSuccess('সফলভাবে লগইন হয়েছে!');
       } catch (err: any) {
-        if (email === 'banglag215@gmail.com') {
+        if (email === 'banglag215@gmail.com' || email === 'nazrulpost75@gmail.com') {
           // Auto create or reset admin user if they do not exist or got invalid credentials
           try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
@@ -464,9 +518,37 @@ export default function App() {
     }
   };
 
+  const wrapWithSecurity = (element: React.ReactNode) => {
+    return (
+      <>
+        {element}
+        <AnimatePresence>
+          {securityMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.9 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999999] w-[90%] max-w-sm"
+            >
+              <div className="bg-slate-900/95 text-white border border-rose-500/50 backdrop-blur-xl px-4 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3">
+                <div className="w-8 h-8 shrink-0 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl flex items-center justify-center animate-bounce">
+                  <Lock size={15} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-extrabold text-[10px] text-rose-400 tracking-wider uppercase">নিরাপত্তা সতর্কতা / Security Alert</p>
+                  <p className="text-slate-300 text-[10px] leading-relaxed font-semibold mt-0.5">{securityMessage}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  };
+
   // Loading indicator screen
   if (isLoadingAuth) {
-    return (
+    return wrapWithSecurity(
       <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center max-w-md mx-auto shadow-2xl border-x border-stone-200">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-[#764ba2] border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -478,9 +560,9 @@ export default function App() {
 
   // Dual Router checks: If logged in, redirect accordingly
   if (firebaseUser) {
-    const isUserAdmin = firebaseUser.email === 'banglag215@gmail.com';
+    const isUserAdmin = isAdmin;
     if (!isUserAdmin && siteMaintenance.enabled) {
-      return (
+      return wrapWithSecurity(
         <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center px-4 max-w-sm mx-auto shadow-2xl border-x border-slate-800 text-center text-white relative">
           <div className="bg-slate-950 border border-slate-850 rounded-3xl p-6.5 shadow-xl w-full border border-amber-900/40">
             <div className="w-16 h-16 bg-amber-500/10 text-amber-550 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 animate-pulse">
@@ -505,13 +587,13 @@ export default function App() {
 
     if (activeApp === 'novashop') {
       if (isAdmin && isAdminPreviewMode) {
-        return (
+        return wrapWithSecurity(
           <NovaShopAdmin 
             onBackToTakahubAdmin={() => setActiveApp('takahub')}
           />
         );
       } else {
-        return (
+        return wrapWithSecurity(
           <NovaShopApp 
             userId={firebaseUser.uid}
             userEmail={firebaseUser.email || ''}
@@ -521,7 +603,7 @@ export default function App() {
       }
     } else {
       if (isAdmin && isAdminPreviewMode) {
-        return (
+        return wrapWithSecurity(
           <AdminPanel 
             adminEmail={firebaseUser.email || ''} 
             onLogout={handleLogout} 
@@ -530,7 +612,7 @@ export default function App() {
           />
         );
       } else {
-        return (
+        return wrapWithSecurity(
           <UserApp 
             userId={firebaseUser.uid} 
             userEmail={firebaseUser.email || ''} 
@@ -545,7 +627,7 @@ export default function App() {
   }
 
   // Non-logged in Users: Renders beautiful Authenticate Login / Registers form
-  return (
+  return wrapWithSecurity(
     <div className="min-h-screen bg-slate-550 flex flex-col justify-center items-center px-4 max-w-sm mx-auto shadow-2xl border-x border-stone-200 bg-linear-to-tr from-[#667eea]/5 to-[#8ec5fc]/15 relative">
       
       <div className="w-full bg-white rounded-3xl p-6.5 shadow-xl border border-stone-150 relative overflow-hidden">

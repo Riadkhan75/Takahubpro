@@ -18,6 +18,8 @@ import {
   TelegramSellRequest,
   WhatsappSellRequest,
   FacebookSellRequest,
+  InstagramSellRequest,
+  SocialText,
   ReferralMission, 
   HomeTask, 
   AdCampaign, 
@@ -59,6 +61,7 @@ import {
   Facebook,
   Send,
   MessageSquare,
+  Instagram,
   AlertCircle,
   Globe,
   ShoppingBag,
@@ -76,8 +79,8 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwitchToNovaAdmin }: AdminPanelProps) {
-  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans'>('stats');
-  const [sellSubTab, setSellSubTab] = useState<'gmail' | 'telegram' | 'whatsapp' | 'facebook'>('gmail');
+  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans' | 'admins'>('stats');
+  const [sellSubTab, setSellSubTab] = useState<'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram'>('gmail');
 
   // Investment Plans States
   const [investmentPlans, setInvestmentPlans] = useState<InvestmentPlan[]>([]);
@@ -93,6 +96,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [telegramSells, setTelegramSells] = useState<TelegramSellRequest[]>([]);
   const [whatsappSells, setWhatsappSells] = useState<WhatsappSellRequest[]>([]);
   const [facebookSells, setFacebookSells] = useState<FacebookSellRequest[]>([]);
+  const [instagramSells, setInstagramSells] = useState<InstagramSellRequest[]>([]);
+  const [socialTexts, setSocialTexts] = useState<SocialText[]>([]);
   const [jobSubmissions, setJobSubmissions] = useState<JobSubmission[]>([]);
   const [activations, setActivations] = useState<ActivationRequest[]>([]);
   const [withdraws, setWithdraws] = useState<WithdrawalRequest[]>([]);
@@ -137,6 +142,9 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [selectedFacebookSell, setSelectedFacebookSell] = useState<FacebookSellRequest | null>(null);
   const [facebookSellPaymentInput, setFacebookSellPaymentInput] = useState('');
 
+  const [selectedInstagramSell, setSelectedInstagramSell] = useState<InstagramSellRequest | null>(null);
+  const [instagramSellPaymentInput, setInstagramSellPaymentInput] = useState('');
+
   // Creation form states
   const [newAdTitle, setNewAdTitle] = useState('');
   const [newAdLink, setNewAdLink] = useState('');
@@ -155,6 +163,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [setMinWithdrawTelegramLimit, setSetMinWithdrawTelegramLimit] = useState('50');
   const [setMinWithdrawWhatsappLimit, setSetMinWithdrawWhatsappLimit] = useState('50');
   const [setMinWithdrawFacebookLimit, setSetMinWithdrawFacebookLimit] = useState('50');
+  const [setMinWithdrawInstagramLimit, setSetMinWithdrawInstagramLimit] = useState('50');
   const [setMinWithdrawAdsLimit, setSetMinWithdrawAdsLimit] = useState('50');
   const [setAppDownloadUrl, setSetAppDownloadUrl] = useState('');
   const [setGmailBuyPrice, setSetGmailBuyPrice] = useState('15');
@@ -162,9 +171,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [setTelegramOpenPassword, setSetTelegramOpenPassword] = useState('Shihab@2025#');
   const [setWhatsappOpenPassword, setSetWhatsappOpenPassword] = useState('Shihab@2025#');
   const [setFacebookOpenPassword, setSetFacebookOpenPassword] = useState('Shihab@2025#');
+  const [setInstagramOpenPassword, setSetInstagramOpenPassword] = useState('Shihab@2025#');
   const [setTelegramBuyPrice, setSetTelegramBuyPrice] = useState('20');
   const [setWhatsappBuyPrice, setSetWhatsappBuyPrice] = useState('30');
   const [setFacebookBuyPrice, setSetFacebookBuyPrice] = useState('25');
+  const [setInstagramBuyPrice, setSetInstagramBuyPrice] = useState('20');
 
   const [gmailMaintEnabled, setGmailMaintEnabled] = useState(false);
   const [gmailMaintMsg, setGmailMaintMsg] = useState('');
@@ -174,6 +185,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [whatsappMaintMsg, setWhatsappMaintMsg] = useState('');
   const [facebookMaintEnabled, setFacebookMaintEnabled] = useState(false);
   const [facebookMaintMsg, setFacebookMaintMsg] = useState('');
+  const [instagramMaintEnabled, setInstagramMaintEnabled] = useState(false);
+  const [instagramMaintMsg, setInstagramMaintMsg] = useState('');
 
   // Additional single maintenance states
   const [jobsMaintEnabled, setJobsMaintEnabled] = useState(false);
@@ -210,6 +223,47 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [setNagadNumber, setSetNagadNumber] = useState('01934984690');
   const [activationPrice, setActivationPrice] = useState('100');
   const [setReferralRootLink, setSetReferralRootLink] = useState(window.location.origin);
+
+  const [setGmailLastDate, setSetGmailLastDate] = useState('');
+  const [setTelegramLastDate, setSetTelegramLastDate] = useState('');
+  const [setWhatsappLastDate, setSetWhatsappLastDate] = useState('');
+  const [setFacebookLastDate, setSetFacebookLastDate] = useState('');
+  const [setInstagramLastDate, setSetInstagramLastDate] = useState('');
+
+  // Sub-Admins Management states
+  const [subAdmins, setSubAdmins] = useState<any[]>([]);
+  const [newSubAdminEmail, setNewSubAdminEmail] = useState('');
+  const [newSubAdminName, setNewSubAdminName] = useState('');
+  const [newSubAdminPermissions, setNewSubAdminPermissions] = useState({
+    users: true,
+    sells: true,
+    jobSubmissions: true,
+    activations: true,
+    withdraws: true,
+    settings: true,
+  });
+
+  // Multi-Admin Permission Resolution
+  const isSuperAdmin = adminEmail.toLowerCase().trim() === 'banglag215@gmail.com' || adminEmail.toLowerCase().trim() === 'nazrulpost75@gmail.com';
+  const currentAdminSecretRecord = subAdmins.find(
+    (sa) => sa.email && sa.email.toLowerCase().trim() === adminEmail.toLowerCase().trim()
+  );
+
+  const permissions = isSuperAdmin 
+    ? { users: true, sells: true, jobSubmissions: true, activations: true, withdraws: true, settings: true }
+    : (currentAdminSecretRecord?.permissions || {
+        users: false,
+        sells: false,
+        jobSubmissions: false,
+        activations: false,
+        withdraws: false,
+        settings: false,
+      });
+
+  // CSV Export Modal Fallback state
+  const [csvPreviewData, setCsvPreviewData] = useState<string>('');
+  const [csvPreviewTitle, setCsvPreviewTitle] = useState<string>('');
+  const [csvPreviewOpen, setCsvPreviewOpen] = useState<boolean>(false);
 
   // New States inside AdminPanel
   const [popupEnabled, setPopupEnabled] = useState(false);
@@ -283,6 +337,20 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
 
   // 1. Fetch DB lists inside Admin Panels
   useEffect(() => {
+    // Sub-Admins listener
+    onValue(ref(db, 'sub_admins'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const adminList = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })).reverse();
+        setSubAdmins(adminList);
+      } else {
+        setSubAdmins([]);
+      }
+    });
+
     // Users
     onValue(ref(db, 'users'), (snapshot) => {
       const data = snapshot.val();
@@ -358,6 +426,36 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setFacebookSells(sellsList);
       } else {
         setFacebookSells([]);
+      }
+    });
+
+    // Instagram Sells
+    onValue(ref(db, 'instagram_sells'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const sellsList = Object.entries(data)
+          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .map(([key, val]: [string, any]) => ({
+            id: key,
+            ...val
+          })).reverse();
+        setInstagramSells(sellsList);
+      } else {
+        setInstagramSells([]);
+      }
+    });
+
+    // Custom Admin Social Texts
+    onValue(ref(db, 'social_texts'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })).reverse();
+        setSocialTexts(list as SocialText[]);
+      } else {
+        setSocialTexts([]);
       }
     });
 
@@ -564,6 +662,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           adsterraScriptCode: data.adsterraScriptCode || '',
           adsterraDailyLimit: data.adsterraDailyLimit || 10,
           minWithdrawAds: data.minWithdrawAds || 50,
+          gmailLastDate: data.gmailLastDate || '',
+          telegramLastDate: data.telegramLastDate || '',
+          whatsappLastDate: data.whatsappLastDate || '',
+          facebookLastDate: data.facebookLastDate || '',
+          instagramLastDate: data.instagramLastDate || '',
         });
 
         // Seed inputs
@@ -572,6 +675,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setSetMinWithdrawTelegramLimit(String(data.minWithdrawTelegram || 50));
         setSetMinWithdrawWhatsappLimit(String(data.minWithdrawWhatsapp || 50));
         setSetMinWithdrawFacebookLimit(String(data.minWithdrawFacebook || 50));
+        setSetMinWithdrawInstagramLimit(String(data.minWithdrawInstagram || 50));
         setSetMinWithdrawAdsLimit(String(data.minWithdrawAds || 50));
         setSetAppDownloadUrl(data.appDownloadLink || '');
         setSetGmailBuyPrice(String(data.gmailPrice || 15));
@@ -579,9 +683,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setSetTelegramOpenPassword(data.telegramOpenPass || 'Shihab@2025#');
         setSetWhatsappOpenPassword(data.whatsappOpenPass || 'Shihab@2025#');
         setSetFacebookOpenPassword(data.facebookOpenPass || 'Shihab@2025#');
+        setSetInstagramOpenPassword(data.instagramOpenPass || 'Shihab@2025#');
         setSetTelegramBuyPrice(String(data.telegramPrice || 20));
         setSetWhatsappBuyPrice(String(data.whatsappPrice || 30));
         setSetFacebookBuyPrice(String(data.facebookPrice || 25));
+        setSetInstagramBuyPrice(String(data.instagramPrice || 20));
         setGameDailyLimit(String(data.gameDailyLimit || 5));
         setGameFreeReward(String(data.gameFreeReward || 1));
 
@@ -604,6 +710,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setWhatsappMaintMsg(data.whatsappMaintenanceMessage || '');
         setFacebookMaintEnabled(data.facebookMaintenanceEnabled || false);
         setFacebookMaintMsg(data.facebookMaintenanceMessage || '');
+        setInstagramMaintEnabled(data.instagramMaintenanceEnabled || false);
+        setInstagramMaintMsg(data.instagramMaintenanceMessage || '');
 
         setJobsMaintEnabled(data.jobsMaintenanceEnabled || false);
         setJobsMaintMsg(data.jobsMaintenanceMessage || '');
@@ -655,9 +763,254 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setAdsterraDirectReward(String(data.adsterraDirectReward ?? '0.15'));
         setAdsterraScriptCode(data.adsterraScriptCode || '');
         setAdsterraDailyLimit(String(data.adsterraDailyLimit || 10));
+
+        setSetGmailLastDate(data.gmailLastDate || '');
+        setSetTelegramLastDate(data.telegramLastDate || '');
+        setSetWhatsappLastDate(data.whatsappLastDate || '');
+        setSetFacebookLastDate(data.facebookLastDate || '');
+        setSetInstagramLastDate(data.instagramLastDate || '');
       }
     });
   }, []);
+
+  // --- EXPORT DEAL DATABASES TO CSV SPREADSHEET ---
+  const handleExportSellsCSV = (platform: 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram' | 'users' | 'withdraws') => {
+    let dataToExport: any[] = [];
+    let headers: string[] = [];
+    let rowMapper: (item: any) => string[] = () => [];
+    let title = '';
+
+    const formatDate = (ts: number) => {
+      if (!ts) return '';
+      return new Date(ts).toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' });
+    };
+
+    if (platform === 'gmail') {
+      title = 'TakaHub_Gmail_Sells';
+      dataToExport = sells;
+      headers = ['ID', 'User ID', 'Seller Username', 'Gmail Account Email', 'Password', 'Status', 'Timestamp'];
+      rowMapper = (item: GmailSellRequest) => [
+        item.id || '',
+        item.userId || '',
+        item.username || '',
+        item.email || '',
+        item.password || '',
+        item.status || 'pending',
+        formatDate(item.timestamp)
+      ];
+    } else if (platform === 'telegram') {
+      title = 'TakaHub_Telegram_Sells';
+      dataToExport = telegramSells;
+      headers = ['ID', 'User ID', 'Seller Username', 'Telegram Number', 'Extra Details/Credentials', 'Status', 'Timestamp'];
+      rowMapper = (item: TelegramSellRequest) => [
+        item.id || '',
+        item.userId || '',
+        item.username || '',
+        item.number || '',
+        item.details || '',
+        item.status || 'pending',
+        formatDate(item.timestamp)
+      ];
+    } else if (platform === 'whatsapp') {
+      title = 'TakaHub_WhatsApp_Sells';
+      dataToExport = whatsappSells;
+      headers = ['ID', 'User ID', 'Seller Username', 'WhatsApp Number', 'Extra Details/Credentials', 'Status', 'Timestamp'];
+      rowMapper = (item: WhatsappSellRequest) => [
+        item.id || '',
+        item.userId || '',
+        item.username || '',
+        item.number || '',
+        item.details || '',
+        item.status || 'pending',
+        formatDate(item.timestamp)
+      ];
+    } else if (platform === 'facebook') {
+      title = 'TakaHub_Facebook_Sells';
+      dataToExport = facebookSells;
+      headers = ['ID', 'User ID', 'Seller Username', 'FaceBook Email/ID', 'Password', '2FA Backup Key', 'Status', 'Timestamp'];
+      rowMapper = (item: FacebookSellRequest) => [
+        item.id || '',
+        item.userId || '',
+        item.username || '',
+        item.email || '',
+        item.password || '',
+        item.twoFactor || '',
+        item.status || 'pending',
+        formatDate(item.timestamp)
+      ];
+    } else if (platform === 'instagram') {
+      title = 'TakaHub_Instagram_Sells';
+      dataToExport = instagramSells;
+      headers = ['ID', 'User ID', 'Seller Username', 'Instagram Email/Username', 'Password', '2FA Backup Key/Recovery', 'Status', 'Timestamp'];
+      rowMapper = (item: InstagramSellRequest) => [
+        item.id || '',
+        item.userId || '',
+        item.username || '',
+        item.email || '',
+        item.password || '',
+        item.twoFactor || '',
+        item.status || 'pending',
+        formatDate(item.timestamp)
+      ];
+    } else if (platform === 'users') {
+      title = 'TakaHub_Active_Users';
+      dataToExport = dbUsers;
+      headers = ['UID', 'Username', 'Email', 'Main Balance', 'Gmail Balance', 'Telegram Balance', 'WhatsApp Balance', 'Facebook Balance', 'Ads Balance', 'Is Active', 'Refer Code', 'Total Refers', 'Device ID', 'Is Banned'];
+      rowMapper = (item: UserData) => [
+        item.uid || '',
+        item.username || '',
+        item.email || '',
+        String(item.balance || 0),
+        String(item.gmailBalance || 0),
+        String(item.telegramBalance || 0),
+        String(item.whatsappBalance || 0),
+        String(item.facebookBalance || 0),
+        String(item.adsBalance || 0),
+        item.isActive ? 'Yes' : 'No',
+        item.referCode || '',
+        String(item.totalRefers || 0),
+        item.deviceId || '',
+        item.isBanned ? 'Yes' : 'No'
+      ];
+    } else if (platform === 'withdraws') {
+      title = 'TakaHub_Withdrawals';
+      dataToExport = withdraws;
+      headers = ['ID', 'User ID', 'User Email', 'Mobile Bank Method', 'Recipient Number', 'Amount (BDT)', 'Status', 'Balance Type', 'Timestamp'];
+      rowMapper = (item: WithdrawalRequest) => [
+        item.id || '',
+        item.userId || '',
+        item.email || '',
+        item.method || '',
+        item.number || '',
+        String(item.amount || 0),
+        item.status || '',
+        item.balanceType || 'main',
+        formatDate(item.timestamp)
+      ];
+    }
+
+    if (dataToExport.length === 0) {
+      showToast('ডাউনলোড করার মত কোনো রেকর্ড পাওয়া যায়নি!', 'err');
+      return;
+    }
+
+    const content = [
+      headers.join(','),
+      ...dataToExport.map(item => rowMapper(item).map(val => {
+        const stringVal = String(val === undefined || val === null ? '' : val).replace(/"/g, '""');
+        return `"${stringVal}"`;
+      }).join(','))
+    ].join('\n');
+
+    try {
+      const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${title}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.warn("Direct file download blocked or failed, fallback copy dialogue is opening:", err);
+    }
+
+    setCsvPreviewData(content);
+    setCsvPreviewTitle(`${title}_${new Date().toISOString().split('T')[0]}.csv`);
+    setCsvPreviewOpen(true);
+    showToast('স্প্রেডশিট ডাউনলোড করা হয়েছে! কপি করার উইন্ডোও খোলা হয়েছে।', 'success');
+  };
+
+  // --- SUB-ADMIN CONTROL CRUD HANDLERS ---
+  const handleAddSubAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isSuperAdmin) {
+      showToast('শুধুমাত্র সুপার এডমিন নতুন এডমিন নিয়োগ করতে পারবে!', 'err');
+      return;
+    }
+
+    const email = newSubAdminEmail.trim().toLowerCase();
+    const name = newSubAdminName.trim();
+
+    if (!email || !name) {
+      showToast('সব বক্সে সঠিক তথ্য দিন', 'err');
+      return;
+    }
+
+    // Verify sub-admin does not already exist with this email
+    const exists = subAdmins.some(sa => sa.email.toLowerCase().trim() === email);
+    if (exists) {
+      showToast('এই এডমিন ইতিপূর্বেই নিযুক্ত আছেন!', 'err');
+      return;
+    }
+
+    try {
+      const subAdminRef = ref(db, 'sub_admins');
+      const newAdminRef = push(subAdminRef);
+      
+      await set(newAdminRef, {
+        id: newAdminRef.key,
+        email,
+        name,
+        permissions: newSubAdminPermissions,
+        addedAt: Date.now()
+      });
+
+      showToast('নতুন এডমিন সফলভাবে নিযুক্ত করা হয়েছে!', 'success');
+      setNewSubAdminEmail('');
+      setNewSubAdminName('');
+      setNewSubAdminPermissions({
+        users: true,
+        sells: true,
+        jobSubmissions: true,
+        activations: true,
+        withdraws: true,
+        settings: true,
+      });
+    } catch (err) {
+      console.error(err);
+      showToast('এডমিন নিয়োগে ত্রুটি হয়েছে', 'err');
+    }
+  };
+
+  const handleToggleSubAdminPermission = async (adminId: string, permissionName: keyof typeof newSubAdminPermissions) => {
+    if (!isSuperAdmin) {
+      showToast('শুধুমাত্র সুপার এডমিন পারমিশন পরিবর্তন করতে পারবে!', 'err');
+      return;
+    }
+
+    const target = subAdmins.find(sa => sa.id === adminId);
+    if (!target) return;
+
+    try {
+      const updatedPermissions = {
+        ...target.permissions,
+        [permissionName]: !target.permissions[permissionName]
+      };
+
+      await set(ref(db, `sub_admins/${adminId}/permissions`), updatedPermissions);
+      showToast('পারমিশন সফলভাবে আপডেট করা হয়েছে!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('পারমিশন পরিবর্তনে ত্রুটি হয়েছে', 'err');
+    }
+  };
+
+  const handleDeleteSubAdmin = async (adminId: string) => {
+    if (!isSuperAdmin) {
+      showToast('শুধুমাত্র সুপার এডমিন সাব-এডমিন অপসারণ করতে পারবে!', 'err');
+      return;
+    }
+
+    try {
+      await set(ref(db, `sub_admins/${adminId}`), null);
+      showToast('সাব-এডমিন সফলভাবে অপসারণ করা হয়েছে!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('এডমিন অপসারণে ত্রুটি হয়েছে', 'err');
+    }
+  };
 
   // --- ACTIVATE/APPROVE TRx USER ACTIVATION REQUESTS ---
   const handleApproveActivation = async (request: ActivationRequest) => {
@@ -932,6 +1285,45 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       await remove(ref(db, `facebook_sells/${selectedFacebookSell.id}`));
       setSelectedFacebookSell(null);
       showToast('ফেসবুক বিক্রয় অনুরোধ বাতিল করা হয়েছে', 'success');
+    } catch (e: any) {
+      showToast('ত্রুটি: ' + e.message, 'err');
+    }
+  };
+
+  const handleApproveInstagramSell = async () => {
+    if (!selectedInstagramSell) return;
+    const payAmt = parseFloat(instagramSellPaymentInput);
+    if (isNaN(payAmt) || payAmt <= 0) {
+      showToast('সঠিক টাকা প্রদান করুন', 'err');
+      return;
+    }
+
+    try {
+      const userRef = ref(db, `users/${selectedInstagramSell.userId}`);
+      const userSnap = await get(userRef);
+
+      if (userSnap.exists()) {
+        const uData = userSnap.val();
+        await update(userRef, {
+          instagramBalance: (uData.instagramBalance || 0) + payAmt
+        });
+      }
+
+      await remove(ref(db, `instagram_sells/${selectedInstagramSell.id}`));
+      setSelectedInstagramSell(null);
+      setInstagramSellPaymentInput('');
+      showToast(`ইন্সটাগ্রাম সফলভাবে কেনা হয়েছে! ৳${payAmt} ইউজারকে দেওয়া হয়েছে।`, 'success');
+    } catch (e: any) {
+      showToast('ত্রুটি: ' + e.message, 'err');
+    }
+  };
+
+  const handleDeclineInstagramSell = async () => {
+    if (!selectedInstagramSell) return;
+    try {
+      await remove(ref(db, `instagram_sells/${selectedInstagramSell.id}`));
+      setSelectedInstagramSell(null);
+      showToast('ইন্সটাগ্রাম বিক্রয় অনুরোধ বাতিল করা হয়েছে', 'success');
     } catch (e: any) {
       showToast('ত্রুটি: ' + e.message, 'err');
     }
@@ -1341,11 +1733,13 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const minWtele = parseFloat(setMinWithdrawTelegramLimit);
       const minWwhat = parseFloat(setMinWithdrawWhatsappLimit);
       const minWfb = parseFloat(setMinWithdrawFacebookLimit);
+      const minWig = parseFloat(setMinWithdrawInstagramLimit);
       const minWads = parseFloat(setMinWithdrawAdsLimit);
       const gmailPr = parseFloat(setGmailBuyPrice);
       const telegramPr = parseFloat(setTelegramBuyPrice);
       const whatsappPr = parseFloat(setWhatsappBuyPrice);
       const facebookPr = parseFloat(setFacebookBuyPrice);
+      const instagramPr = parseFloat(setInstagramBuyPrice);
       const actPr = parseFloat(activationPrice);
       const gDailyLim = parseInt(gameDailyLimit);
       const gFreeRew = parseFloat(gameFreeReward);
@@ -1357,6 +1751,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         minWithdrawTelegram: isNaN(minWtele) ? 50 : minWtele,
         minWithdrawWhatsapp: isNaN(minWwhat) ? 50 : minWwhat,
         minWithdrawFacebook: isNaN(minWfb) ? 50 : minWfb,
+        minWithdrawInstagram: isNaN(minWig) ? 50 : minWig,
         minWithdrawAds: isNaN(minWads) ? 50 : minWads,
         activationPrice: isNaN(actPr) ? 100 : actPr,
         appDownloadLink: setAppDownloadUrl.trim(),
@@ -1365,9 +1760,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         telegramOpenPass: setTelegramOpenPassword.trim(),
         whatsappOpenPass: setWhatsappOpenPassword.trim(),
         facebookOpenPass: setFacebookOpenPassword.trim(),
+        instagramOpenPass: setInstagramOpenPassword.trim(),
         telegramPrice: isNaN(telegramPr) ? 20 : telegramPr,
         whatsappPrice: isNaN(whatsappPr) ? 30 : whatsappPr,
         facebookPrice: isNaN(facebookPr) ? 25 : facebookPr,
+        instagramPrice: isNaN(instagramPr) ? 20 : instagramPr,
         gameDailyLimit: isNaN(gDailyLim) ? 5 : gDailyLim,
         gameFreeReward: isNaN(gFreeRew) ? 1 : gFreeRew,
         gameMaintenanceEnabled: gameMaintEnabled,
@@ -1380,6 +1777,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         whatsappMaintenanceMessage: whatsappMaintMsg.trim(),
         facebookMaintenanceEnabled: facebookMaintEnabled,
         facebookMaintenanceMessage: facebookMaintMsg.trim(),
+        instagramMaintenanceEnabled: instagramMaintEnabled,
+        instagramMaintenanceMessage: instagramMaintMsg.trim(),
         jobsMaintenanceEnabled: jobsMaintEnabled,
         jobsMaintenanceMessage: jobsMaintMsg.trim(),
         postJobMaintenanceEnabled: postJobMaintEnabled,
@@ -1433,6 +1832,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         adsterraDirectReward: isNaN(parseFloat(adsterraDirectReward)) ? 0.15 : parseFloat(adsterraDirectReward),
         adsterraScriptCode: adsterraScriptCode.trim(),
         adsterraDailyLimit: isNaN(adsterraDLim) ? 10 : adsterraDLim,
+        gmailLastDate: setGmailLastDate.trim(),
+        telegramLastDate: setTelegramLastDate.trim(),
+        whatsappLastDate: setWhatsappLastDate.trim(),
+        facebookLastDate: setFacebookLastDate.trim(),
+        instagramLastDate: setInstagramLastDate.trim(),
       });
 
       showToast('সব গ্লোবাল সেটিংস আপডেট করা হয়েছে!', 'success');
@@ -1631,66 +2035,86 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           <Home size={13} />
           <span>ড্যাশবোর্ড</span>
         </button>
-        <button onClick={() => setAdminTab('users')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'users' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Users size={13} />
-          <span>ইউজার ({dbUsers.length})</span>
-        </button>
-        <button onClick={() => setAdminTab('activations')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'activations' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <ShieldCheck size={13} />
-          <span>এক্টিভেশন</span>
-          {activations.length > 0 && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
-          )}
-        </button>
-        <button onClick={() => setAdminTab('sells')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'sells' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Mail size={13} />
-          <span>জিমেইল সেল</span>
-          {sells.length > 0 && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
-          )}
-        </button>
-        <button onClick={() => setAdminTab('job-submissions')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'job-submissions' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <CheckCheck size={13} />
-          <span>জব রিভিউ</span>
-          {jobSubmissions.length > 0 && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
-          )}
-        </button>
-        <button onClick={() => setAdminTab('withdraws')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'withdraws' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <CreditCard size={13} />
-          <span>টাকা উত্তোলন</span>
-          {withdraws.length > 0 && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
-          )}
-        </button>
-        <button onClick={() => setAdminTab('ads')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'ads' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Megaphone size={13} />
-          <span>বিজ্ঞপ্তি-Ads</span>
-        </button>
-        <button onClick={() => setAdminTab('campaigns')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'campaigns' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Briefcase size={13} />
-          <span>ক্যাম্পেইন ({jobs.length})</span>
-        </button>
-        <button onClick={() => setAdminTab('tasks')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'tasks' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Smartphone size={13} />
-          <span>হোম কাজ</span>
-        </button>
-        <button onClick={() => setAdminTab('missions')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'missions' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Award size={13} />
-          <span>মিশন</span>
-        </button>
-        <button onClick={() => setAdminTab('websites')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'websites' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Globe size={13} />
-          <span>অন্যান্য সাইট ({websites.length})</span>
-        </button>
-        <button onClick={() => setAdminTab('plans')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'plans' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <TrendingUp size={13} />
-          <span>ইনভেস্টমেন্ট প্ল্যান ({investmentPlans.length})</span>
-        </button>
-        <button onClick={() => setAdminTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'settings' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-          <Settings size={13} />
-          <span>সেটিংস</span>
-        </button>
+        {permissions.users && (
+          <button onClick={() => setAdminTab('users')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'users' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <Users size={13} />
+            <span>ইউজার ({dbUsers.length})</span>
+          </button>
+        )}
+        {permissions.activations && (
+          <button onClick={() => setAdminTab('activations')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'activations' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <ShieldCheck size={13} />
+            <span>এক্টিভেশন</span>
+            {activations.length > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+            )}
+          </button>
+        )}
+        {permissions.sells && (
+          <button onClick={() => setAdminTab('sells')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'sells' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <Mail size={13} />
+            <span>জিমেইল সেল</span>
+            {sells.length > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+            )}
+          </button>
+        )}
+        {permissions.jobSubmissions && (
+          <button onClick={() => setAdminTab('job-submissions')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'job-submissions' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <CheckCheck size={13} />
+            <span>জব রিভিউ</span>
+            {jobSubmissions.length > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+            )}
+          </button>
+        )}
+        {permissions.withdraws && (
+          <button onClick={() => setAdminTab('withdraws')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'withdraws' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <CreditCard size={13} />
+            <span>টাকা উত্তোলন</span>
+            {withdraws.length > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+            )}
+          </button>
+        )}
+        {permissions.settings && (
+          <>
+            <button onClick={() => setAdminTab('ads')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'ads' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <Megaphone size={13} />
+              <span>বিজ্ঞপ্তি-Ads</span>
+            </button>
+            <button onClick={() => setAdminTab('campaigns')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'campaigns' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <Briefcase size={13} />
+              <span>ক্যাম্পেইন ({jobs.length})</span>
+            </button>
+            <button onClick={() => setAdminTab('tasks')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'tasks' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <Smartphone size={13} />
+              <span>হোম কাজ</span>
+            </button>
+            <button onClick={() => setAdminTab('missions')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'missions' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <Award size={13} />
+              <span>মিশন</span>
+            </button>
+            <button onClick={() => setAdminTab('websites')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'websites' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <Globe size={13} />
+              <span>অন্যান্য সাইট ({websites.length})</span>
+            </button>
+            <button onClick={() => setAdminTab('plans')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'plans' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <TrendingUp size={13} />
+              <span>ইনভেস্টমেন্ট প্ল্যান ({investmentPlans.length})</span>
+            </button>
+            <button onClick={() => setAdminTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'settings' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <Settings size={13} />
+              <span>সেটিংস</span>
+            </button>
+          </>
+        )}
+        {isSuperAdmin && (
+          <button onClick={() => setAdminTab('admins')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'admins' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <UserCheck size={13} />
+            <span>এডমিন নিয়ন্ত্রণ ({subAdmins.length})</span>
+          </button>
+        )}
       </nav>
 
       {/* Main Admin Section Body */}
@@ -1819,7 +2243,16 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         {/* VIEW 3: USER LISTS MANAGEMENTS */}
         {adminTab === 'users' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <h2 className="text-base font-bold text-white tracking-wide">রেজিস্টার্ড ইউজার তালিকা ({dbUsers.length})</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h2 className="text-base font-bold text-white tracking-wide">রেজিস্টার্ড ইউজার তালিকা ({dbUsers.length})</h2>
+              <button
+                onClick={() => handleExportSellsCSV('users')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg flex items-center gap-1 transition shadow-md cursor-pointer"
+              >
+                <TrendingUp size={11} className="rotate-90" />
+                <span>ইউজার লিস্ট (.CSV)</span>
+              </button>
+            </div>
 
             <div className="space-y-2.5">
               {dbUsers.map(u => (
@@ -2029,6 +2462,30 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   <span className="bg-red-550 text-white text-[9px] px-1.5 py-0.5 rounded-full font-sans font-extrabold shadow-sm">{facebookSells.length}</span>
                 )}
               </button>
+              <button
+                onClick={() => setSellSubTab('instagram')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${sellSubTab === 'instagram' ? 'bg-rose-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'}`}
+              >
+                <span>ইন্সটাগ্রাম ডিলস</span>
+                {instagramSells.length > 0 && (
+                  <span className="bg-red-550 text-white text-[9px] px-1.5 py-0.5 rounded-full font-sans font-extrabold shadow-sm">{instagramSells.length}</span>
+                )}
+              </button>
+            </div>
+
+            {/* CSV Spreadsheet downloader quick action button */}
+            <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
+              <div className="text-left">
+                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest block">একাউন্ট ডাউনলোড জোন</span>
+                <p className="text-xs text-slate-300 font-semibold mt-0.5">রিয়েল-টাইম পেন্ডিং একাউন্টের এক্সেল স্প্রেডশিট ডাউনলোড করুন</p>
+              </div>
+              <button
+                onClick={() => handleExportSellsCSV(sellSubTab)}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-lg active:scale-95 transition-all duration-200"
+              >
+                <TrendingUp size={14} className="rotate-90" />
+                <span>স্প্রেডশিট ডাউনলোড (.CSV)</span>
+              </button>
             </div>
 
             {/* GMAIL DEALS */}
@@ -2178,7 +2635,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
               <div className="space-y-4 font-sans text-xs">
                 {whatsappSells.length === 0 ? (
                   <div className="text-center py-10 bg-slate-950 rounded-2xl border border-slate-800">
-                    <MessageSquare className="text-slate-700 mx-auto mb-2" size={32} />
+                    <MessageSquare className="text-slate-700 mx-auto mb-2 opacity-50" size={32} />
                     <p className="text-slate-500 text-xs">কোনো হোয়াটসঅ্যাপ সেল পেন্ডিং নেই</p>
                   </div>
                 ) : (
@@ -2197,7 +2654,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
 
                         <div className="bg-slate-900 border border-slate-800/80 p-3 rounded-xl space-y-2 select-all font-mono text-xs">
                           <div className="flex justify-between">
-                            <span className="text-slate-500">WhatsApp Number:</span>
+                            <span className="text-slate-505">WhatsApp Number:</span>
                             <strong className="text-emerald-400">{sell.number}</strong>
                           </div>
                           {sell.details && (
@@ -2250,7 +2707,155 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
               <div className="space-y-4 font-sans text-xs">
                 {facebookSells.length === 0 ? (
                   <div className="text-center py-10 bg-slate-950 rounded-2xl border border-slate-800">
-                    <Facebook className="text-slate-700 mx-auto mb-2" size={32} />
+                    <Facebook className="text-slate-700 mx-auto mb-2 opacity-50" size={32} />
+                    <p className="text-slate-500 text-xs">কোনো ফেসবুক সেল পেন্ডিং নেই</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {facebookSells.map(sell => (
+                      <div key={sell.id} className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-white text-xs">বিক্রেতা: {sell.username}</h4>
+                            <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">ইউজার আইডি: {sell.userId}</span>
+                          </div>
+                          <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                            Pending
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-900 border border-slate-800/80 p-3 rounded-xl space-y-2 select-all font-mono text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-mono">FB Email/Phone:</span>
+                            <strong className="text-indigo-400 font-mono">{sell.email}</strong>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-mono font-bold">FB Password:</span>
+                            <strong className="text-indigo-400 font-mono">{sell.password}</strong>
+                          </div>
+                          <div className="flex justify-between items-center bg-indigo-950/40 p-2 rounded-lg border border-indigo-900/30 mt-1">
+                            <span className="text-indigo-300 font-bold font-mono">Backup Code / Two Factor (2FA):</span>
+                            <strong className="text-indigo-200 tracking-wider text-sm select-all font-mono">{sell.twoFactor}</strong>
+                          </div>
+                        </div>
+
+                        <div className="pt-1.5 flex gap-2">
+                          <button 
+                            onClick={() => {
+                              setSelectedFacebookSell(sell);
+                              setFacebookSellPaymentInput(String(globalSettings.facebookPrice || 25));
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition"
+                          >
+                            কিনে নিন (পেমেন্ট করুন)
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setConfirmState({
+                                title: 'ফেসবুক রিকোয়েস্ট ডিলিট নিশ্চিতকরণ',
+                                message: 'আপনি কি নিশ্চিত এই ফেসবুক রিকোয়েস্টটি ডিলিট করতে চান?',
+                                onConfirm: async () => {
+                                  try {
+                                    await remove(ref(db, `facebook_sells/${sell.id}`));
+                                    showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
+                                  } catch (err: any) {
+                                    showToast('ত্রুটি: ' + err.message, 'err');
+                                  }
+                                }
+                              });
+                            }}
+                            className="bg-slate-850 hover:bg-slate-800 text-slate-400 p-2 border border-slate-800 rounded-xl transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* INSTAGRAM DEALS */}
+            {sellSubTab === 'instagram' && (
+              <div className="space-y-4 font-sans text-xs">
+                {instagramSells.length === 0 ? (
+                  <div className="text-center py-10 bg-slate-950 rounded-2xl border border-slate-800">
+                    <Instagram className="text-slate-700 mx-auto mb-2 opacity-50" size={32} />
+                    <p className="text-slate-500 text-xs">কোনো ইন্সটাগ্রাম সেল পেন্ডিং নেই</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {instagramSells.map(sell => (
+                      <div key={sell.id} className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-white text-xs">বিক্রেতা: {sell.username}</h4>
+                            <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">ইউজার আইডি: {sell.userId}</span>
+                          </div>
+                          <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                            Pending
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-900 border border-slate-800/80 p-3 rounded-xl space-y-2 select-all font-mono text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-mono">Instagram Username/Email:</span>
+                            <strong className="text-rose-400 font-mono">{sell.email || sell.username}</strong>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-mono">Password:</span>
+                            <strong className="text-rose-450 font-mono">{sell.password}</strong>
+                          </div>
+                          <div className="flex justify-between items-center bg-rose-950/20 p-2 rounded-lg border border-rose-900/10 mt-1">
+                            <span className="text-rose-300 font-bold font-mono">Backup Code / Two Factor (2FA):</span>
+                            <strong className="text-rose-200 tracking-wider text-sm select-all font-mono">{sell.twoFactor || 'N/A'}</strong>
+                          </div>
+                        </div>
+
+                        <div className="pt-1.5 flex gap-2">
+                          <button 
+                            onClick={() => {
+                              setSelectedInstagramSell(sell);
+                              setInstagramSellPaymentInput(String(globalSettings.instagramPrice || 20));
+                            }}
+                            className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition"
+                          >
+                            কিনে নিন (পেমেন্ট করুন)
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setConfirmState({
+                                title: 'ইন্সটাগ্রাম রিকোয়েস্ট ডিলিট নিশ্চিতকরণ',
+                                message: 'আপনি কি নিশ্চিত এই ইন্সটাগ্রাম রিকোয়েস্টটি ডিলিট করতে চান?',
+                                onConfirm: async () => {
+                                  try {
+                                    await remove(ref(db, `instagram_sells/${sell.id}`));
+                                    showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
+                                  } catch (err: any) {
+                                    showToast('ত্রুটি: ' + err.message, 'err');
+                                  }
+                                }
+                              });
+                            }}
+                            className="bg-slate-850 hover:bg-slate-800 text-slate-400 p-2 border border-slate-800 rounded-xl transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* FACEBOOK DEALS */}
+            {sellSubTab === 'facebook' && (
+              <div className="space-y-4 font-sans text-xs">
+                {facebookSells.length === 0 ? (
+                  <div className="text-center py-10 bg-slate-950 rounded-2xl border border-slate-800">
+                    <Facebook className="text-slate-700 mx-auto mb-2 opacity-50" size={32} />
                     <p className="text-slate-500 text-xs">কোনো ফেসবুক সেল পেন্ডিং নেই</p>
                   </div>
                 ) : (
@@ -2277,8 +2882,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             <strong className="text-indigo-455">{sell.password}</strong>
                           </div>
                           <div className="flex justify-between items-center bg-indigo-950/40 p-2 rounded-lg border border-indigo-900/30 mt-1">
-                            <span className="text-indigo-300 font-bold">Backup Code / Two Factor (2FA):</span>
-                            <strong className="text-indigo-200 tracking-wider text-sm select-all">{sell.twoFactor}</strong>
+                            <span className="text-indigo-300 font-bold font-mono">Backup Code / Two Factor (2FA):</span>
+                            <strong className="text-indigo-200 tracking-wider text-sm select-all font-mono">{sell.twoFactor}</strong>
                           </div>
                         </div>
 
@@ -2530,6 +3135,59 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                 </div>
               )}
             </AnimatePresence>
+
+            {/* INSTAGRAM MODAL */}
+            <AnimatePresence>
+              {selectedInstagramSell && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+                  <motion.div 
+                    initial={{ scale: 0.9 }} 
+                    animate={{ scale: 1 }} 
+                    exit={{ scale: 0.9 }}
+                    className="bg-slate-950 border border-slate-800 p-6 rounded-2xl w-full max-w-sm text-xs font-sans text-slate-200"
+                  >
+                    <div className="flex justify-between items-center border-b border-slate-850 pb-3 mb-4">
+                      <h3 className="font-bold text-white text-sm">ইন্সটাগ্রাম পেমেন্ট বোনাস যুক্ত করুন</h3>
+                      <button onClick={() => setSelectedInstagramSell(null)} className="text-slate-400 hover:text-white">
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="leading-relaxed">
+                        বিক্রেতা: <strong className="text-white">{selectedInstagramSell.username}</strong><br />
+                        কার্ড Username: <strong className="font-mono text-rose-400">{selectedInstagramSell.email || selectedInstagramSell.username}</strong>
+                      </p>
+
+                      <div className="space-y-1.5">
+                        <label className="text-slate-400 font-bold">কত টাকা বোনাস যুক্ত করবেন? (৳)</label>
+                        <input 
+                          type="number" 
+                          value={instagramSellPaymentInput}
+                          onChange={(e) => setInstagramSellPaymentInput(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 outline-none text-white font-bold"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
+                        <button 
+                          onClick={handleApproveInstagramSell}
+                          className="bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-3 rounded-xl transition cursor-pointer"
+                        >
+                          এপ্রুভ ও পেমেন্ট
+                        </button>
+                        <button 
+                          onClick={handleDeclineInstagramSell}
+                          className="bg-red-950 hover:bg-red-900 text-red-400 border border-red-900/30 font-bold py-3 rounded-xl transition cursor-pointer"
+                        >
+                          রিজেক্ট করুন
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
 
@@ -2672,7 +3330,16 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         {/* VIEW 6: WITHDRAW APPROVALS */}
         {adminTab === 'withdraws' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <h2 className="text-base font-bold text-white tracking-wide">টাকা উত্তোলনের পেমেন্ট রিকোয়েস্ট</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h2 className="text-base font-bold text-white tracking-wide">টাকা উত্তোলনের পেমেন্ট রিকোয়েস্ট</h2>
+              <button
+                onClick={() => handleExportSellsCSV('withdraws')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg flex items-center gap-1 transition shadow-md cursor-pointer animate-pulse"
+              >
+                <TrendingUp size={11} className="rotate-90" />
+                <span>উত্তোলন রিকোয়েস্ট লিস্ট (.CSV)</span>
+              </button>
+            </div>
 
             {withdraws.length === 0 ? (
               <div className="text-center py-10 bg-slate-950 rounded-2xl border border-slate-800">
@@ -3549,6 +4216,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white"
                         />
                       </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                        <input 
+                          type="datetime-local" 
+                          value={setGmailLastDate}
+                          onChange={(e) => setSetGmailLastDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white font-sans"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3575,6 +4251,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           value={setTelegramOpenPassword}
                           onChange={(e) => setSetTelegramOpenPassword(e.target.value)}
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                        <input 
+                          type="datetime-local" 
+                          value={setTelegramLastDate}
+                          onChange={(e) => setSetTelegramLastDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white font-sans"
                         />
                       </div>
                     </div>
@@ -3605,6 +4290,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white"
                         />
                       </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                        <input 
+                          type="datetime-local" 
+                          value={setWhatsappLastDate}
+                          onChange={(e) => setSetWhatsappLastDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white font-sans"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3631,6 +4325,52 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           value={setFacebookOpenPassword}
                           onChange={(e) => setSetFacebookOpenPassword(e.target.value)}
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                        <input 
+                          type="datetime-local" 
+                          value={setFacebookLastDate}
+                          onChange={(e) => setSetFacebookLastDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white font-sans"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD: ইন্সটাগ্রাম সিকিউরিটি ও প্রাইস */}
+                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <span className="text-[10px] text-rose-400 font-black tracking-wider uppercase block mb-1">ইন্সটাগ্রাম সিকিউরিটি ও প্রাইস</span>
+                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">ইন্সটাগ্রাম একাউন্ট সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
+                        <input 
+                          type="number" 
+                          value={setInstagramBuyPrice}
+                          onChange={(e) => setSetInstagramBuyPrice(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold font-mono text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
+                        <input 
+                          type="text" 
+                          value={setInstagramOpenPassword}
+                          onChange={(e) => setSetInstagramOpenPassword(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                        <input 
+                          type="datetime-local" 
+                          value={setInstagramLastDate}
+                          onChange={(e) => setSetInstagramLastDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white font-sans"
                         />
                       </div>
                     </div>
@@ -4201,6 +4941,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                     { id: 'novashop', label: 'নোভা শপ (Nova Shop Premium)', enabled: novashopMaintEnabled, setEnabled: setNovashopMaintEnabled, msg: novashopMaintMsg, setMsg: setNovashopMaintMsg, defaultMsg: 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের নোভা শপ সেবা বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।' },
                     { id: 'game', label: 'গেম ও ইনকাম (Tic Tac Toe Game)', enabled: gameMaintEnabled, setEnabled: setGameMaintEnabled, msg: gameMaintMsg, setMsg: setGameMaintMsg, defaultMsg: 'গেম সাময়িক রক্ষণাবেক্ষণের কারণে বন্ধ আছে।' },
                     { id: 'investment', label: 'ইনভেস্টমেন্ট প্ল্যান (Investment Plans)', enabled: investmentMaintEnabled, setEnabled: setInvestmentMaintEnabled, msg: investmentMaintMsg, setMsg: setInvestmentMaintMsg, defaultMsg: 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ইনভেস্টমেন্ট সিস্টেম বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।' },
+                    { id: 'instagram', label: 'ইন্সটাগ্রাম বিক্রয় (Instagram Sell)', enabled: instagramMaintEnabled, setEnabled: setInstagramMaintEnabled, msg: instagramMaintMsg, setMsg: setInstagramMaintMsg, defaultMsg: 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ইন্সটাগ্রাম বিক্রয় সেবা বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।' },
                   ].map((feat) => (
                     <div key={feat.id} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-2.5">
                       <div className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-850">
@@ -4455,6 +5196,175 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           </motion.div>
         )}
 
+        {/* VIEW 13: SUB-ADMIN MANAGEMENT PANEL (Super Admin Only) */}
+        {adminTab === 'admins' && isSuperAdmin && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5 font-sans">
+            <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+              <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+                <UserCheck size={18} className="text-rose-500" />
+                <span>নতুন এডমিন যুক্ত করুন (Create Sub-Admin)</span>
+              </h2>
+              <form onSubmit={handleAddSubAdmin} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 font-bold block">এডমিনের নাম</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newSubAdminName}
+                      onChange={(e) => setNewSubAdminName(e.target.value)}
+                      placeholder="যেমন: সাকিব হাসান"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-rose-500 text-white font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 font-bold block">এডমিন ইমেইল</label>
+                    <input 
+                      type="email" 
+                      required
+                      value={newSubAdminEmail}
+                      onChange={(e) => setNewSubAdminEmail(e.target.value)}
+                      placeholder="যেমন: sakib@gmail.com"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-rose-500 text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <label className="text-[10.5px] text-slate-300 font-extrabold block mb-2.5 uppercase tracking-wide">এডমিন পারমিশন দিন (Assign Roles & Permissions)</label>
+                  <div className="grid grid-cols-2 gap-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-850">
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold pr-2">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.users}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, users: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-slate-200">ইউজার নিয়ন্ত্রণ (Users Balance/Ban)</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold pr-2">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.sells}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, sells: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-slate-200">জিমেইল-সোশ্যাল ডিলস (Sells Approval)</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold pr-2">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.jobSubmissions}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, jobSubmissions: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-slate-200">মাইক্রো জব প্রুফ (Job Review)</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold pr-2">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.activations}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, activations: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-slate-200">ইউজার অ্যাক্টিভেশন (Activation Trx)</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold pr-2 col-span-2 sm:col-span-1">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.withdraws}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, withdraws: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-slate-200">টাকা উত্তোলন (Withdraw Appr.)</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold col-span-2 sm:col-span-1">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.settings}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, settings: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-slate-200">সেটিংস ও ক্যাম্পেইন (Global Settings)</span>
+                    </label>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white font-extrabold text-xs py-3 rounded-xl transition shadow-lg shadow-indigo-950/20 cursor-pointer"
+                >
+                  নিযুক্ত করুন / সচল করুন (Assign Role)
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-3.5">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">বর্তমানে নিযুক্ত সাব-এডমিন তালিকা ({subAdmins.length})</h3>
+              
+              {subAdmins.length === 0 ? (
+                <div className="text-center py-8 bg-slate-950 rounded-2xl border border-slate-800">
+                  <User size={32} className="text-slate-700 mx-auto mb-2" />
+                  <p className="text-slate-500 text-xs">কোনো অতিরিক্ত সাব-এডমিন যোগ করা নেই</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {subAdmins.map((item: any) => (
+                    <div key={item.id} className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3.5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-white text-sm">{item.name}</h4>
+                          <span className="text-xs text-slate-400 font-mono block mt-0.5">{item.email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm('আপনি কি নিশ্চিত যে এই সাব-এডমিনকে অপসারন করতে চান?')) {
+                              handleDeleteSubAdmin(item.id);
+                            }
+                          }}
+                          className="bg-red-950/30 hover:bg-red-900 border border-red-500/20 text-red-400 hover:text-white font-bold p-1.5 rounded-lg text-xs transition"
+                          title="অপসারণ"
+                        >
+                          অপসারণ 🗑
+                        </button>
+                      </div>
+
+                      <div className="border-t border-slate-800/60 pt-3.5">
+                        <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider block mb-2">নির্দিষ্ট পারমিশন টগল (Toggle Permissions)</span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {[
+                            { name: 'users', label: 'ইউজার নিয়ন্ত্রণ' },
+                            { name: 'sells', label: 'জিমেইল-সোশ্যাল ডিলস' },
+                            { name: 'jobSubmissions', label: 'জব রিভিউ' },
+                            { name: 'activations', label: 'ইউজার অ্যাক্টিভেশন' },
+                            { name: 'withdraws', label: 'টাকা উত্তোলন' },
+                            { name: 'settings', label: 'সেটিংস ও ক্যাম্পেইন' },
+                          ].map(perm => (
+                            <button
+                              key={perm.name}
+                              type="button"
+                              onClick={() => handleToggleSubAdminPermission(item.id, perm.name as any)}
+                              className={`px-3 py-1.5 rounded-lg font-bold text-[10.5px] transition flex items-center justify-between border ${
+                                item.permissions?.[perm.name]
+                                  ? 'bg-emerald-950/20 text-emerald-400 border-emerald-500/20'
+                                  : 'bg-slate-900 text-slate-500 border-slate-810'
+                              }`}
+                            >
+                              <span>{perm.label}</span>
+                              <span className="text-[9px]">{item.permissions?.[perm.name] ? 'সক্রিয়' : 'বন্ধ'}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
       </main>
 
       {/* Fullscreen review screenshots overlays */}
@@ -4517,6 +5427,90 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-650/20 transition"
                 >
                   নিশ্চিত করুন
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CSV Export & Data Fallback Modal */}
+      <AnimatePresence>
+        {csvPreviewOpen && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-sky-500/10 text-sky-400 rounded-lg">
+                    <TrendingUp size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-white">স্প্রেডশিট রিসিভ উইন্ডো</h3>
+                    <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{csvPreviewTitle}</span>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setCsvPreviewOpen(false)}
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="bg-amber-950/10 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300 leading-relaxed font-semibold">
+                ℹ️ <strong>টিপস:</strong> মোবাইল বা ব্রাউজার যদি সিকিউরিটি কারণে সরাসরি <b>.CSV</b> ফাইল ডাউনলোড করতে বাধা দেয়, তাহলে নিচের <b>"সব কপি করুন"</b> বাটনটিতে টাচ করে পুরো ডাটা কপি করতে পারবেন এবং ফোনে বা কম্পিউটারে এক্সেল ফাইলে বসাতে পারেন।
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] text-slate-500 font-bold uppercase block pl-1">ফাইল ডেটা ভিউ (CSV Data View)</span>
+                <textarea 
+                  readOnly 
+                  value={csvPreviewData} 
+                  className="w-full h-48 bg-slate-950 border border-slate-850 rounded-xl p-3 text-xs font-mono text-slate-300 outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvPreviewData], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", csvPreviewTitle);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    showToast('ফাইল ডাউনলোড রি-এটেম্পট করা হয়েছে!', 'success');
+                  }}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  📥 পুনরায় ডাউনলোডের চেষ্টা করুন
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(csvPreviewData);
+                    showToast('সব ডেটা ক্লিপবোর্ডে কপি করা হয়েছে!', 'success');
+                  }}
+                  className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-sky-950/20"
+                >
+                  📋 সব ডেটা কপি করুন (Copy Data)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCsvPreviewOpen(false)}
+                  className="px-3 py-2.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition"
+                >
+                  বন্ধ করুন
                 </button>
               </div>
             </motion.div>
