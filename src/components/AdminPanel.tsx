@@ -177,6 +177,9 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [setFacebookBuyPrice, setSetFacebookBuyPrice] = useState('25');
   const [setInstagramBuyPrice, setSetInstagramBuyPrice] = useState('20');
 
+  const [signupBonusEnabled, setSignupBonusEnabled] = useState(false);
+  const [signupBonusAmount, setSignupBonusAmount] = useState('0');
+
   const [gmailMaintEnabled, setGmailMaintEnabled] = useState(false);
   const [gmailMaintMsg, setGmailMaintMsg] = useState('');
   const [telegramMaintEnabled, setTelegramMaintEnabled] = useState(false);
@@ -241,6 +244,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     activations: true,
     withdraws: true,
     settings: true,
+    gmailPriceSecurity: true,
+    telegramPriceSecurity: true,
+    whatsappPriceSecurity: true,
+    facebookPriceSecurity: true,
+    instagramPriceSecurity: true,
   });
 
   // Multi-Admin Permission Resolution
@@ -250,7 +258,19 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   );
 
   const permissions = isSuperAdmin 
-    ? { users: true, sells: true, jobSubmissions: true, activations: true, withdraws: true, settings: true }
+    ? { 
+        users: true, 
+        sells: true, 
+        jobSubmissions: true, 
+        activations: true, 
+        withdraws: true, 
+        settings: true,
+        gmailPriceSecurity: true,
+        telegramPriceSecurity: true,
+        whatsappPriceSecurity: true,
+        facebookPriceSecurity: true,
+        instagramPriceSecurity: true,
+      }
     : (currentAdminSecretRecord?.permissions || {
         users: false,
         sells: false,
@@ -258,6 +278,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         activations: false,
         withdraws: false,
         settings: false,
+        gmailPriceSecurity: false,
+        telegramPriceSecurity: false,
+        whatsappPriceSecurity: false,
+        facebookPriceSecurity: false,
+        instagramPriceSecurity: false,
       });
 
   // CSV Export Modal Fallback state
@@ -688,6 +713,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setSetWhatsappBuyPrice(String(data.whatsappPrice || 30));
         setSetFacebookBuyPrice(String(data.facebookPrice || 25));
         setSetInstagramBuyPrice(String(data.instagramPrice || 20));
+
+        setSignupBonusEnabled(data.signupBonusEnabled || false);
+        setSignupBonusAmount(String(data.signupBonusAmount || 0));
+
         setGameDailyLimit(String(data.gameDailyLimit || 5));
         setGameFreeReward(String(data.gameFreeReward || 1));
 
@@ -967,6 +996,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         activations: true,
         withdraws: true,
         settings: true,
+        gmailPriceSecurity: true,
+        telegramPriceSecurity: true,
+        whatsappPriceSecurity: true,
+        facebookPriceSecurity: true,
+        instagramPriceSecurity: true,
       });
     } catch (err) {
       console.error(err);
@@ -1004,7 +1038,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     }
 
     try {
-      await set(ref(db, `sub_admins/${adminId}`), null);
+      await remove(ref(db, `sub_admins/${adminId}`));
       showToast('সাব-এডমিন সফলভাবে অপসারণ করা হয়েছে!', 'success');
     } catch (err) {
       console.error(err);
@@ -1837,6 +1871,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         whatsappLastDate: setWhatsappLastDate.trim(),
         facebookLastDate: setFacebookLastDate.trim(),
         instagramLastDate: setInstagramLastDate.trim(),
+        signupBonusEnabled: signupBonusEnabled,
+        signupBonusAmount: isNaN(parseFloat(signupBonusAmount)) ? 0 : parseFloat(signupBonusAmount),
       });
 
       showToast('সব গ্লোবাল সেটিংস আপডেট করা হয়েছে!', 'success');
@@ -2103,11 +2139,18 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
               <TrendingUp size={13} />
               <span>ইনভেস্টমেন্ট প্ল্যান ({investmentPlans.length})</span>
             </button>
-            <button onClick={() => setAdminTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'settings' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
-              <Settings size={13} />
-              <span>সেটিংস</span>
-            </button>
           </>
+        )}
+        {(permissions.settings || 
+          permissions.gmailPriceSecurity || 
+          permissions.telegramPriceSecurity || 
+          permissions.whatsappPriceSecurity || 
+          permissions.facebookPriceSecurity || 
+          permissions.instagramPriceSecurity) && (
+          <button onClick={() => setAdminTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'settings' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <Settings size={13} />
+            <span>সেটিংস</span>
+          </button>
         )}
         {isSuperAdmin && (
           <button onClick={() => setAdminTab('admins')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'admins' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
@@ -4192,190 +4235,200 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   </div>
                 </div>
 
-                {/* CARD 2: জিমেইল সিকিউরিটি ও প্রাইস */}
-                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
-                  <div>
-                    <span className="text-[10px] text-sky-400 font-black tracking-wider uppercase block mb-1">জিমেইল সিকিউরিটি ও প্রাইস</span>
-                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">জিমেইল ক্রিয়েশন সাবমিটের ক্রয় মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
-                        <input 
-                          type="number" 
-                          value={setGmailBuyPrice}
-                          onChange={(e) => setSetGmailBuyPrice(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold font-mono text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
-                        <input 
-                          type="text" 
-                          value={setGmailOpenPassword}
-                          onChange={(e) => setSetGmailOpenPassword(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
-                        <input 
-                          type="datetime-local" 
-                          value={setGmailLastDate}
-                          onChange={(e) => setSetGmailLastDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white font-sans"
-                        />
+                 {/* CARD 2: জিমেইল সিকিউরিটি ও প্রাইস */}
+                {(isSuperAdmin || permissions.settings || permissions.gmailPriceSecurity) && (
+                  <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] text-sky-400 font-black tracking-wider uppercase block mb-1">জিমেইল সিকিউরিটি ও প্রাইস</span>
+                      <p className="text-slate-500 text-[9px] leading-relaxed mb-3">জিমেইল ক্রিয়েশন সাবমিটের ক্রয় মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
+                          <input 
+                            type="number" 
+                            value={setGmailBuyPrice}
+                            onChange={(e) => setSetGmailBuyPrice(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold font-mono text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
+                          <input 
+                            type="text" 
+                            value={setGmailOpenPassword}
+                            onChange={(e) => setSetGmailOpenPassword(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                          <input 
+                            type="datetime-local" 
+                            value={setGmailLastDate}
+                            onChange={(e) => setSetGmailLastDate(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white font-sans"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* CARD 3: টেলিগ্রাম সিকিউরিটি ও প্রাইস */}
-                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
-                  <div>
-                    <span className="text-[10px] text-sky-450 font-black tracking-wider uppercase block mb-1">টেলিগ্রাম সিকিউরিটি ও প্রাইস</span>
-                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">টেলিগ্রাম নাম্বার সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
-                        <input 
-                          type="number" 
-                          value={setTelegramBuyPrice}
-                          onChange={(e) => setSetTelegramBuyPrice(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold font-mono text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
-                        <input 
-                          type="text" 
-                          value={setTelegramOpenPassword}
-                          onChange={(e) => setSetTelegramOpenPassword(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
-                        <input 
-                          type="datetime-local" 
-                          value={setTelegramLastDate}
-                          onChange={(e) => setSetTelegramLastDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white font-sans"
-                        />
+                {(isSuperAdmin || permissions.settings || permissions.telegramPriceSecurity) && (
+                  <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] text-sky-450 font-black tracking-wider uppercase block mb-1">টেলিগ্রাম সিকিউরিটি ও প্রাইস</span>
+                      <p className="text-slate-500 text-[9px] leading-relaxed mb-3">টেলিগ্রাম নাম্বার সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
+                          <input 
+                            type="number" 
+                            value={setTelegramBuyPrice}
+                            onChange={(e) => setSetTelegramBuyPrice(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold font-mono text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
+                          <input 
+                            type="text" 
+                            value={setTelegramOpenPassword}
+                            onChange={(e) => setSetTelegramOpenPassword(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                          <input 
+                            type="datetime-local" 
+                            value={setTelegramLastDate}
+                            onChange={(e) => setSetTelegramLastDate(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white font-sans"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* CARD 4: হোয়াটসঅ্যাপ সিকিউরিটি ও প্রাইস */}
-                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
-                  <div>
-                    <span className="text-[10px] text-emerald-400 font-black tracking-wider uppercase block mb-1">হোয়াটসঅ্যাপ সিকিউরিটি ও প্রাইস</span>
-                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">হোয়াটসঅ্যাপ নাম্বার সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
-                        <input 
-                          type="number" 
-                          value={setWhatsappBuyPrice}
-                          onChange={(e) => setSetWhatsappBuyPrice(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold font-mono text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
-                        <input 
-                          type="text" 
-                          value={setWhatsappOpenPassword}
-                          onChange={(e) => setSetWhatsappOpenPassword(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
-                        <input 
-                          type="datetime-local" 
-                          value={setWhatsappLastDate}
-                          onChange={(e) => setSetWhatsappLastDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white font-sans"
-                        />
+                {(isSuperAdmin || permissions.settings || permissions.whatsappPriceSecurity) && (
+                  <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] text-emerald-400 font-black tracking-wider uppercase block mb-1">হোয়াটসঅ্যাপ সিকিউরিটি ও প্রাইস</span>
+                      <p className="text-slate-500 text-[9px] leading-relaxed mb-3">হোয়াটসঅ্যাপ নাম্বার সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
+                          <input 
+                            type="number" 
+                            value={setWhatsappBuyPrice}
+                            onChange={(e) => setSetWhatsappBuyPrice(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold font-mono text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
+                          <input 
+                            type="text" 
+                            value={setWhatsappOpenPassword}
+                            onChange={(e) => setSetWhatsappOpenPassword(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                          <input 
+                            type="datetime-local" 
+                            value={setWhatsappLastDate}
+                            onChange={(e) => setSetWhatsappLastDate(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white font-sans"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* CARD 5: ফেসবুক সিকিউরিটি ও প্রাইস */}
-                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
-                  <div>
-                    <span className="text-[10px] text-indigo-400 font-black tracking-wider uppercase block mb-1">ফেসবুক সিকিউরিটি ও প্রাইস</span>
-                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">ফেসবুক একাউন্ট সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
-                        <input 
-                          type="number" 
-                          value={setFacebookBuyPrice}
-                          onChange={(e) => setSetFacebookBuyPrice(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold font-mono text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
-                        <input 
-                          type="text" 
-                          value={setFacebookOpenPassword}
-                          onChange={(e) => setSetFacebookOpenPassword(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
-                        <input 
-                          type="datetime-local" 
-                          value={setFacebookLastDate}
-                          onChange={(e) => setSetFacebookLastDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white font-sans"
-                        />
+                {(isSuperAdmin || permissions.settings || permissions.facebookPriceSecurity) && (
+                  <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] text-indigo-400 font-black tracking-wider uppercase block mb-1">ফেসবুক সিকিউরিটি ও প্রাইস</span>
+                      <p className="text-slate-500 text-[9px] leading-relaxed mb-3">ফেসবুক একাউন্ট সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
+                          <input 
+                            type="number" 
+                            value={setFacebookBuyPrice}
+                            onChange={(e) => setSetFacebookBuyPrice(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold font-mono text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
+                          <input 
+                            type="text" 
+                            value={setFacebookOpenPassword}
+                            onChange={(e) => setSetFacebookOpenPassword(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                          <input 
+                            type="datetime-local" 
+                            value={setFacebookLastDate}
+                            onChange={(e) => setSetFacebookLastDate(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white font-sans"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* CARD: ইন্সটাগ্রাম সিকিউরিটি ও প্রাইস */}
-                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
-                  <div>
-                    <span className="text-[10px] text-rose-400 font-black tracking-wider uppercase block mb-1">ইন্সটাগ্রাম সিকিউরিটি ও প্রাইস</span>
-                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">ইন্সটাগ্রাম একাউন্ট সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
-                        <input 
-                          type="number" 
-                          value={setInstagramBuyPrice}
-                          onChange={(e) => setSetInstagramBuyPrice(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold font-mono text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
-                        <input 
-                          type="text" 
-                          value={setInstagramOpenPassword}
-                          onChange={(e) => setSetInstagramOpenPassword(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
-                        <input 
-                          type="datetime-local" 
-                          value={setInstagramLastDate}
-                          onChange={(e) => setSetInstagramLastDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white font-sans"
-                        />
+                {(isSuperAdmin || permissions.settings || permissions.instagramPriceSecurity) && (
+                  <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] text-rose-400 font-black tracking-wider uppercase block mb-1">ইন্সটাগ্রাম সিকিউরিটি ও প্রাইস</span>
+                      <p className="text-slate-500 text-[9px] leading-relaxed mb-3">ইন্সটাগ্রাম একাউন্ট সাবমিটের ক্রয়মূল্য এবং একাউন্ট রিট্রিভাল মাস্টার পাসওয়ার্ড।</p>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">ক্রয় মূল্য (৳)</label>
+                          <input 
+                            type="number" 
+                            value={setInstagramBuyPrice}
+                            onChange={(e) => setSetInstagramBuyPrice(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold font-mono text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">মাস্টার পাসওয়ার্ড (Open Pass)</label>
+                          <input 
+                            type="text" 
+                            value={setInstagramOpenPassword}
+                            onChange={(e) => setSetInstagramOpenPassword(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[10px] font-bold">সাবমিট করার শেষ সময় ও তারিখ (Deadline)</label>
+                          <input 
+                            type="datetime-local" 
+                            value={setInstagramLastDate}
+                            onChange={(e) => setSetInstagramLastDate(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white font-sans"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* CARD 6: রুট ডোমেন ও অ্যাপ্লিকেশন ডাউনলোড লিংক */}
                 <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
@@ -4627,6 +4680,41 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           onChange={(e) => setSiteMaintenanceMessage(e.target.value)}
                           placeholder="রক্ষণাবেক্ষণের নোটিশ লিখুন (যেমন: সিস্টেম আপগ্রেড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...)"
                           className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[9px] outline-none text-white focus:border-amber-500 font-sans"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 9.5: সাইনআপ বোনাস কন্ট্রোল */}
+                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] text-emerald-400 font-black tracking-wider uppercase block">সাইনআপ বোনাস সিস্টেম</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={signupBonusEnabled} 
+                          onChange={(e) => setSignupBonusEnabled(e.target.checked)} 
+                          className="sr-only"
+                        />
+                        <div className={`w-8 h-4 rounded-full transition-colors relative mr-1.5 ${signupBonusEnabled ? 'bg-emerald-500' : 'bg-slate-800'}`}>
+                          <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${signupBonusEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </div>
+                        <span className="ml-1 text-[8px] font-bold text-slate-400">{signupBonusEnabled ? 'বোনাস অন' : 'বোনাস অফ'}</span>
+                      </label>
+                    </div>
+                    <p className="text-slate-500 text-[9px] leading-relaxed mb-2.5">নতুন ইউজার রেজিস্ট্রেশন বা সাইনআপ করার পর স্বয়ংক্রিয়ভাবে অ্যাকাউন্ট ব্যালেন্সে বোনাস ক্রেডিট ট্রানজেকশন যোগ করার অফার ইন্টিগ্রেশন।</p>
+                    
+                    <div className="space-y-2.5 flex-1 flex flex-col justify-end">
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">বোনাস অ্যামাউন্ট (৳ Price)</label>
+                        <input 
+                          type="number" 
+                          value={signupBonusAmount}
+                          onChange={(e) => setSignupBonusAmount(e.target.value)}
+                          placeholder="যেমন: ১০ বা ২০"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs outline-none text-white focus:border-emerald-500 font-sans font-bold"
                         />
                       </div>
                     </div>
@@ -5287,6 +5375,51 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                       />
                       <span className="text-slate-200">সেটিংস ও ক্যাম্পেইন (Global Settings)</span>
                     </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold col-span-2 sm:col-span-1 border-t border-slate-800/50 pt-1">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.gmailPriceSecurity}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, gmailPriceSecurity: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-rose-400">জিমেইল প্রাইস ও সিকিউরিটি</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold col-span-2 sm:col-span-1 border-t border-slate-800/50 pt-1">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.telegramPriceSecurity}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, telegramPriceSecurity: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-sky-450">টেলিগ্রাম প্রাইস ও সিকিউরিটি</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold col-span-2 sm:col-span-1 border-t border-slate-800/50 pt-1">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.whatsappPriceSecurity}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, whatsappPriceSecurity: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-emerald-400">হোয়াটসঅ্যাপ প্রাইস ও সিকিউরিটি</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold col-span-2 sm:col-span-1 border-t border-slate-800/50 pt-1">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.facebookPriceSecurity}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, facebookPriceSecurity: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-indigo-400">ফেসবুক প্রাইস ও সিকিউরিটি</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold col-span-2 sm:col-span-1 border-t border-slate-800/50 pt-1 col-span-2">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.instagramPriceSecurity}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, instagramPriceSecurity: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-fuchsia-400">ইন্সটাগ্রাম প্রাইস ও সিকিউরিটি</span>
+                    </label>
                   </div>
                 </div>
 
@@ -5340,6 +5473,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             { name: 'activations', label: 'ইউজার অ্যাক্টিভেশন' },
                             { name: 'withdraws', label: 'টাকা উত্তোলন' },
                             { name: 'settings', label: 'সেটিংস ও ক্যাম্পেইন' },
+                            { name: 'gmailPriceSecurity', label: 'জিমেইল প্রাইস/সিকিউরিটি' },
+                            { name: 'telegramPriceSecurity', label: 'টেলিগ্রাম প্রাইস/সিকিউরিটি' },
+                            { name: 'whatsappPriceSecurity', label: 'হোয়াটসঅ্যাপ প্রাইস/সিকিউরিটি' },
+                            { name: 'facebookPriceSecurity', label: 'ফেসবুক প্রাইস/সিকিউরিটি' },
+                            { name: 'instagramPriceSecurity', label: 'ইন্সটাগ্রাম প্রাইস/সিকিউরিটি' },
                           ].map(perm => (
                             <button
                               key={perm.name}

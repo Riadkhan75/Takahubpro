@@ -454,17 +454,30 @@ export default function App() {
         }
 
         // Proceed to Create Firebase Authentication account
+        let signupBonus = 0;
+        try {
+          const settingsSnap = await get(ref(db, 'settings'));
+          if (settingsSnap.exists()) {
+            const settingsData = settingsSnap.val();
+            if (settingsData.signupBonusEnabled) {
+              signupBonus = parseFloat(settingsData.signupBonusAmount || '0') || 0;
+            }
+          }
+        } catch (settingsError) {
+          console.warn("Could not retrieve signup bonus setting:", settingsError);
+        }
+
         const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
         const user = userCredential.user;
 
         // Generate custom unique refer code for user profile
-        const isAdminEmail = email === 'banglag215@gmail.com';
+        const isAdminEmail = email === 'banglag215@gmail.com' || email === 'nazrulpost75@gmail.com';
         const generatedCode = isAdminEmail ? 'ADMINSHI' : Math.random().toString(36).substring(2, 10).toUpperCase();
 
         const userPayload: UserData = {
           username: isAdminEmail ? 'Admin Shihab' : name,
           email: email,
-          balance: isAdminEmail ? 1000 : 0,
+          balance: isAdminEmail ? 1000 : signupBonus,
           isActive: isAdminEmail ? true : false,
           referCode: generatedCode,
           referredBy: authReferCode.trim() || null,

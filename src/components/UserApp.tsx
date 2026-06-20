@@ -84,6 +84,64 @@ function AdsterraScriptBanner({ scriptCode }: { scriptCode: string }) {
   useEffect(() => {
     if (!scriptCode || !containerRef.current) return;
     
+    // Track original methods
+    const originalWindowAdd = window.addEventListener;
+    const originalDocumentAdd = document.addEventListener;
+    const originalBodyAdd = document.body ? document.body.addEventListener : null;
+
+    // Keep track of added listeners so we can remove them on unmount
+    const windowListeners: { type: string; listener: any; options?: any }[] = [];
+    const documentListeners: { type: string; listener: any; options?: any }[] = [];
+    const bodyListeners: { type: string; listener: any; options?: any }[] = [];
+
+    // Track elements added to body / head during this time
+    const addedElements: HTMLElement[] = [];
+
+    // Intercept window.addEventListener
+    window.addEventListener = function (type, listener, options) {
+      windowListeners.push({ type, listener, options });
+      return originalWindowAdd.call(window, type, listener, options);
+    };
+
+    // Intercept document.addEventListener
+    document.addEventListener = function (type, listener, options) {
+      documentListeners.push({ type, listener, options });
+      return originalDocumentAdd.call(document, type, listener, options);
+    };
+
+    // Intercept document.body.addEventListener
+    if (originalBodyAdd) {
+      document.body.addEventListener = function (type, listener, options) {
+        bodyListeners.push({ type, listener, options });
+        return originalBodyAdd.call(document.body, type, listener, options);
+      };
+    }
+
+    // Intercept element creation/appends to clean up elements added to document.body / document.head
+    const originalAppendChild = document.body.appendChild;
+    document.body.appendChild = function (child) {
+      if (child instanceof HTMLElement) {
+        addedElements.push(child);
+      }
+      return originalAppendChild.call(document.body, child);
+    } as any;
+
+    const originalHeadAppendChild = document.head.appendChild;
+    document.head.appendChild = function (child) {
+      if (child instanceof HTMLElement) {
+        addedElements.push(child);
+      }
+      return originalHeadAppendChild.call(document.head, child);
+    } as any;
+
+    const originalInsertBefore = document.body.insertBefore;
+    document.body.insertBefore = function (newChild, refChild) {
+      if (newChild instanceof HTMLElement) {
+        addedElements.push(newChild);
+      }
+      return originalInsertBefore.call(document.body, newChild, refChild);
+    } as any;
+
     // Clear previous
     containerRef.current.innerHTML = '';
     
@@ -107,6 +165,63 @@ function AdsterraScriptBanner({ scriptCode }: { scriptCode: string }) {
     } catch (err) {
       console.error("Adsterra Script load error:", err);
     }
+
+    return () => {
+      // 1. Restore standard API methods
+      window.addEventListener = originalWindowAdd;
+      document.addEventListener = originalDocumentAdd;
+      if (originalBodyAdd && document.body) {
+        document.body.addEventListener = originalBodyAdd;
+      }
+      document.body.appendChild = originalAppendChild;
+      document.head.appendChild = originalHeadAppendChild;
+      document.body.insertBefore = originalInsertBefore;
+
+      // 2. Remove all added event listeners
+      windowListeners.forEach(({ type, listener, options }) => {
+        window.removeEventListener(type, listener, options);
+      });
+      documentListeners.forEach(({ type, listener, options }) => {
+        document.removeEventListener(type, listener, options);
+      });
+      bodyListeners.forEach(({ type, listener, options }) => {
+        document.body.removeEventListener(type, listener, options);
+      });
+
+      // 3. Clear direct click overrides that ad scripts do to intercept page actions
+      window.onclick = null;
+      document.onclick = null;
+      if (document.body) {
+        document.body.onclick = null;
+      }
+
+      // 4. Remove elements created / appended to body or head during watch
+      addedElements.forEach(el => {
+        try {
+          el.parentNode?.removeChild(el);
+        } catch (_) {}
+      });
+
+      // 5. Clean up typical adsterra global properties in window
+      const knownKeys = ['_atr', '_atrk', '_atrk_opts', 'Adsterra', 'p_atr', 'at_push', 'active_ad'];
+      knownKeys.forEach(k => {
+        try {
+          delete (window as any)[k];
+        } catch (_) {}
+      });
+
+      // 6. Direct DOM scan for script tags with external sources or frames and sweep them
+      const extraneous = document.querySelectorAll('script, iframe, [id^="asg_"], [class^="asg_"]');
+      extraneous.forEach(el => {
+        const src = el.getAttribute('src') || '';
+        // If it belongs to ad distribution / popunder systems, delete it
+        if (src && !src.includes(window.location.host) && !src.startsWith('/') && !src.startsWith('./')) {
+          try {
+            el.parentNode?.removeChild(el);
+          } catch (_) {}
+        }
+      });
+    };
   }, [scriptCode]);
 
   if (!scriptCode) return null;
@@ -1670,6 +1785,61 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     });
   };
 
+  // Reusable Countdown Clock for Account Submission Deadlines
+  const DeadlineCountdown = ({ deadlineStr }: { deadlineStr?: string }) => {
+    const [timeLeft, setTimeLeft] = useState<{
+      days: number;
+      hours: number;
+      minutes: number;
+      seconds: number;
+      isPassed: boolean;
+    }>({ days: 0, hours: 0, minutes: 0, seconds: 0, isPassed: false });
+
+    useEffect(() => {
+      if (!deadlineStr) return;
+
+      const calculateTimeLeft = () => {
+        const deadlineTime = new Date(deadlineStr).getTime();
+        const now = Date.now();
+        const difference = deadlineTime - now;
+
+        if (isNaN(deadlineTime) || difference <= 0) {
+          setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isPassed: true });
+          return;
+        }
+
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((difference / 1000 / 60) % 60);
+        const seconds = Math.floor((difference / 1000) % 60);
+
+        setTimeLeft({ days, hours, minutes, seconds, isPassed: false });
+      };
+
+      calculateTimeLeft();
+      const interval = setInterval(calculateTimeLeft, 1000);
+      return () => clearInterval(interval);
+    }, [deadlineStr]);
+
+    if (!deadlineStr) return null;
+    if (timeLeft.isPassed) {
+      return (
+        <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-100 px-2 py-0.5 rounded-full font-black select-none mt-1 animate-pulse">
+          🚫 সময় শেষ হয়ে গেছে!আর সাবমিট করা যাবে না।
+        </span>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 border border-sky-100 px-3 py-1 rounded-xl font-sans mt-2 shadow-xs">
+        <span>⏰ আর বাকি আছে:</span>
+        <span className="font-extrabold font-mono bg-sky-600 text-white px-2 py-0.5 rounded-lg text-sm tracking-wide">
+          {timeLeft.days} দিন {timeLeft.hours} ঘণ্টা {timeLeft.minutes} মিনিট {timeLeft.seconds} সেকেন্ড
+        </span>
+      </div>
+    );
+  };
+
   // Submit Gmail Sell Request
   const handleGmailSell = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3118,7 +3288,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             {/* AI Platforms Income Balances Bento Box */}
             <div className="space-y-2 mt-4">
               <span className="text-[10px] font-extrabold uppercase text-stone-400 tracking-wider block pl-2">সার্ভিস ভিত্তিক ইনকাম ব্যালেন্স (AI Platforms Income)</span>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                 {/* Gmail Balance Card */}
                 <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-1">
@@ -3164,6 +3334,18 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   <div>
                     <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.facebookBalance || 0).toFixed(2)}</h2>
                     <span className="text-[9px] text-indigo-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawFacebook || 50}</span>
+                  </div>
+                </div>
+
+                {/* Instagram Balance Card */}
+                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-stone-500 text-[10px] font-bold">Instagram Earnings</span>
+                    <span className="w-2 h-2 rounded-full bg-[#fa7e1e]"></span>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.instagramBalance || 0).toFixed(2)}</h2>
+                    <span className="text-[9px] text-[#fa7e1e] font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawInstagram || 50}</span>
                   </div>
                 </div>
 
@@ -4009,12 +4191,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       ৳{globalSettings.gmailPrice} (প্রতি পিস)
                     </span>
                     {globalSettings.gmailLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.gmailLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
-                        <div className="flex items-center gap-1">
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.gmailLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
+                        <div className="flex items-center gap-1 text-slate-500 font-bold">
                           <span>🕒 সাবমিট করার শেষ সময়:</span>
                         </div>
-                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.gmailLastDate)}</span>
-                        {isDeadlinePassed(globalSettings.gmailLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর জিমেইল আইডি সাবমিট করা যাবে না।</span>}
+                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.gmailLastDate)}</span>
+                        <DeadlineCountdown deadlineStr={globalSettings.gmailLastDate} />
                       </div>
                     )}
                   </div>
@@ -4131,12 +4313,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       ৳{globalSettings.telegramPrice || 20} (প্রতি পিস)
                     </span>
                     {globalSettings.telegramLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.telegramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
-                        <div className="flex items-center gap-1">
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.telegramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
+                        <div className="flex items-center gap-1 text-slate-500 font-bold">
                           <span>🕒 সাবমিট করার শেষ সময়:</span>
                         </div>
-                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.telegramLastDate)}</span>
-                        {isDeadlinePassed(globalSettings.telegramLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর টেলিগ্রাম আইডি সাবমিট করা যাবে না।</span>}
+                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.telegramLastDate)}</span>
+                        <DeadlineCountdown deadlineStr={globalSettings.telegramLastDate} />
                       </div>
                     )}
                   </div>
@@ -4267,12 +4449,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       ৳{globalSettings.whatsappPrice || 30} (প্রতি পিস)
                     </span>
                     {globalSettings.whatsappLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.whatsappLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
-                        <div className="flex items-center gap-1">
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.whatsappLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
+                        <div className="flex items-center gap-1 text-slate-500 font-bold">
                           <span>🕒 সাবমিট করার শেষ সময়:</span>
                         </div>
-                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.whatsappLastDate)}</span>
-                        {isDeadlinePassed(globalSettings.whatsappLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর হোয়াটসঅ্যাপ আইডি সাবমিট করা যাবে না।</span>}
+                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.whatsappLastDate)}</span>
+                        <DeadlineCountdown deadlineStr={globalSettings.whatsappLastDate} />
                       </div>
                     )}
                   </div>
@@ -4403,12 +4585,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       ৳{globalSettings.facebookPrice || 25} (প্রতি পিস)
                     </span>
                     {globalSettings.facebookLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.facebookLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
-                        <div className="flex items-center gap-1">
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.facebookLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
+                        <div className="flex items-center gap-1 text-slate-500 font-bold">
                           <span>🕒 সাবমিট করার শেষ সময়:</span>
                         </div>
-                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.facebookLastDate)}</span>
-                        {isDeadlinePassed(globalSettings.facebookLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর ফেসবুক আইডি সাবমিট করা যাবে না।</span>}
+                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.facebookLastDate)}</span>
+                        <DeadlineCountdown deadlineStr={globalSettings.facebookLastDate} />
                       </div>
                     )}
                   </div>
@@ -4552,12 +4734,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       ৳{globalSettings.instagramPrice || 20} (প্রতি পিস)
                     </span>
                     {globalSettings.instagramLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.instagramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
-                        <div className="flex items-center gap-1">
+                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.instagramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
+                        <div className="flex items-center gap-1 text-slate-500 font-bold">
                           <span>🕒 সাবমিট করার শেষ সময়:</span>
                         </div>
-                        <span className="font-extrabold text-sm leading-none pt-1">{formatDeadline(globalSettings.instagramLastDate)}</span>
-                        {isDeadlinePassed(globalSettings.instagramLastDate) && <span className="text-[10px] text-red-600 font-extrabold pt-1">🚫 সময় শেষ হয়ে গেছে! আর ইন্সটাগ্রাম আইডি সাবমিট করা যাবে না।</span>}
+                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.instagramLastDate)}</span>
+                        <DeadlineCountdown deadlineStr={globalSettings.instagramLastDate} />
                       </div>
                     )}
                   </div>

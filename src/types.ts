@@ -260,6 +260,8 @@ export interface GlobalSettings {
   whatsappLastDate?: string;
   facebookLastDate?: string;
   instagramLastDate?: string;
+  signupBonusEnabled?: boolean;
+  signupBonusAmount?: number;
 }
 
 export interface ExternalWebsite {
