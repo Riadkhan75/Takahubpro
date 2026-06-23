@@ -35,6 +35,8 @@ import {
   Wallet, 
   UserPlus, 
   ArrowLeftRight, 
+  ArrowDown,
+  ArrowUp,
   Gift, 
   Home, 
   FileText, 
@@ -70,9 +72,21 @@ import {
   EyeOff,
   Globe,
   Award,
+  Phone,
+  Shield,
+  Key,
   Gamepad2,
   Grid,
-  History
+  History,
+  Mail,
+  Compass,
+  User,
+  Calendar,
+  Edit3,
+  MapPin,
+  Save,
+  ChevronDown,
+  ArrowDownCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -661,7 +675,7 @@ interface UserAppProps {
 }
 
 export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, isAdminUser, onSwitchToNovaShop }: UserAppProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'investment-plans'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'investment-plans' | 'profile' | 'deposit'>('home');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
@@ -672,6 +686,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [purchasedPlans, setPurchasedPlans] = useState<PurchasedPlan[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [socialTexts, setSocialTexts] = useState<SocialText[]>([]);
+
+  // User Profile States
+  const [profileName, setProfileName] = useState('');
+  const [profileBirth, setProfileBirth] = useState('');
+  const [profileJob, setProfileJob] = useState('');
+  const [profileLocation, setProfileLocation] = useState('');
+  const [profileSex, setProfileSex] = useState('Male');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
+  const [profileErrorMsg, setProfileErrorMsg] = useState('');
 
 
   // Tic Tac Toe Game states
@@ -760,12 +784,26 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [verificationMessage, setVerificationMessage] = useState({ text: '', type: '' });
   const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
 
+  // Custom Deposit Modal States
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [selectedDepositMethod, setSelectedDepositMethod] = useState<'bkash' | 'nagad'>('bkash');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositNumber, setDepositNumber] = useState('');
+  const [depositTrx, setDepositTrx] = useState('');
+  const [depositMessage, setDepositMessage] = useState({ text: '', type: '' });
+  const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false);
+
   // Master password visibility states
   const [showGmailMasterPass, setShowGmailMasterPass] = useState(false);
   const [showTelegramMasterPass, setShowTelegramMasterPass] = useState(false);
   const [showWhatsappMasterPass, setShowWhatsappMasterPass] = useState(false);
   const [showFacebookMasterPass, setShowFacebookMasterPass] = useState(false);
   const [showInstagramMasterPass, setShowInstagramMasterPass] = useState(false);
+
+  // Social Sell History states
+  const [selectedHistoryPlatform, setSelectedHistoryPlatform] = useState<string | null>(null);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Instagram Sell states
   const [instagramUsername, setInstagramUsername] = useState('');
@@ -805,6 +843,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
 
   const [withdrawMethod, setWithdrawMethod] = useState<'Bkash' | 'Nagad'>('Bkash');
+  const [isMethodDropdownOpen, setIsMethodDropdownOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isDepMethodDropdownOpen, setIsDepMethodDropdownOpen] = useState(false);
   const [withdrawBalanceType, setWithdrawBalanceType] = useState<'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram'>('main');
   const [withdrawNumber, setWithdrawNumber] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -935,7 +976,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             id: key,
             ...val
           }))
-          .filter((x: any) => x.userId === userId)
+          .filter((x: any) => x && x.userId === userId)
           .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         setWithdrawals(list);
       } else {
@@ -984,6 +1025,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           facebookOpenPass: data.facebookOpenPass || 'Shihab@2025#',
           instagramOpenPass: data.instagramOpenPass || 'Shihab@2025#',
           gmailPrice: data.gmailPrice || 15,
+          withdrawFeePercent: data.withdrawFeePercent || 0,
+          depositFeePercent: data.depositFeePercent || 0,
           telegramPrice: data.telegramPrice || 20,
           whatsappPrice: data.whatsappPrice || 30,
           facebookPrice: data.facebookPrice || 25,
@@ -1700,6 +1743,69 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const switchTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     setIsSidelineOpen(false);
+    if (tab === 'profile' && userData) {
+      setProfileName(userData.username || '');
+      setProfileBirth(userData.birth || '');
+      setProfileJob(userData.job || '');
+      setProfileLocation(userData.location || '');
+      setProfileSex(userData.sex || 'Male');
+      setProfileSuccessMsg('');
+      setProfileErrorMsg('');
+    }
+    if (tab === 'gmail-sell') updateSubmissionCount24h('gmail');
+    else if (tab === 'telegram-sell') updateSubmissionCount24h('telegram');
+    else if (tab === 'whatsapp-sell') updateSubmissionCount24h('whatsapp');
+    else if (tab === 'facebook-sell') updateSubmissionCount24h('facebook');
+    else if (tab === 'instagram-sell') updateSubmissionCount24h('instagram');
+  };
+
+  // Profile Update Handler
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+
+    const cleanName = sanitizeInput(profileName.trim());
+    const cleanBirth = sanitizeInput(profileBirth.trim());
+    const cleanJob = sanitizeInput(profileJob.trim());
+    const cleanLocation = sanitizeInput(profileLocation.trim());
+    const cleanSex = sanitizeInput(profileSex.trim());
+
+    if (!cleanName) {
+      setProfileErrorMsg('অনুগ্রহ করে আপনার সম্পূর্ণ নাম লিখুন।');
+      return;
+    }
+
+    if (
+      isMaliciousInput(cleanName) ||
+      isMaliciousInput(cleanBirth) ||
+      isMaliciousInput(cleanJob) ||
+      isMaliciousInput(cleanLocation) ||
+      isMaliciousInput(cleanSex)
+    ) {
+      setProfileErrorMsg('⚠️ অননুমোদিত ক্যারেক্টার বা স্ক্রিপ্ট সনাক্ত হয়েছে!');
+      logSecurityAlert(userId, userEmail, 'XSS Attempt on Profile Update Form', `Name: ${cleanName}`);
+      return;
+    }
+
+    setIsUpdatingProfile(true);
+    setProfileSuccessMsg('');
+    setProfileErrorMsg('');
+
+    try {
+      const userRef = ref(db, `users/${userId}`);
+      await update(userRef, {
+        username: cleanName,
+        birth: cleanBirth,
+        job: cleanJob,
+        location: cleanLocation,
+        sex: cleanSex,
+      });
+      setProfileSuccessMsg('আপনার প্রোফাইল সফলভাবে আপডেট করা হয়েছে!');
+    } catch (err: any) {
+      setProfileErrorMsg(`আপডেট করতে সমস্যা হয়েছে: ${err.message}`);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   // Submit Trx Verification Request
@@ -1760,6 +1866,76 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       setVerificationMessage({ text: 'ব্যর্থ হয়েছে: ' + err.message, type: 'error' });
     } finally {
       setIsSubmittingVerification(false);
+    }
+  };
+
+  const handleDepositSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanNum = sanitizeInput(depositNumber.trim());
+    const cleanTrx = sanitizeInput(depositTrx.trim().toUpperCase());
+    const amountVal = parseFloat(depositAmount.trim());
+
+    if (isMaliciousInput(cleanNum) || isMaliciousInput(cleanTrx)) {
+      setDepositMessage({ text: '⚠️ অননুমোদিত ক্যারেক্টার বা স্ক্রিপ্ট সনাক্ত হয়েছে!', type: 'error' });
+      logSecurityAlert(userId, userEmail, 'XSS Attempt on Deposit Form', `Num: ${cleanNum}, Trx: ${cleanTrx}`);
+      return;
+    }
+
+    if (isNaN(amountVal) || amountVal <= 0) {
+      setDepositMessage({ text: 'সঠিক ডিপোজিট পরিমাণ প্রদান করুন', type: 'error' });
+      return;
+    }
+
+    if (!cleanNum || !cleanTrx) {
+      setDepositMessage({ text: 'বিকাশ/নগদ নম্বর এবং TrxID প্রদান করুন', type: 'error' });
+      return;
+    }
+
+    setIsSubmittingDeposit(true);
+    setDepositMessage({ text: '', type: '' });
+
+    const feePercent = globalSettings.depositFeePercent || 0;
+    const feeAmount = parseFloat(((amountVal * feePercent) / 100).toFixed(2));
+    const netAmount = parseFloat((amountVal - feeAmount).toFixed(2));
+
+    try {
+      const depositRef = ref(db, 'deposit_requests');
+      const newRequestRef = push(depositRef);
+      const requestPayload = {
+        id: newRequestRef.key || Date.now().toString(),
+        userId: userId,
+        username: userData?.username || 'User',
+        userEmail: userEmail,
+        method: selectedDepositMethod,
+        number: cleanNum,
+        amount: amountVal,
+        feePercent: feePercent,
+        feeAmount: feeAmount,
+        netAmount: netAmount,
+        trxId: cleanTrx,
+        status: 'pending',
+        timestamp: Date.now()
+      };
+
+      await set(newRequestRef, requestPayload);
+
+      // Telegram alert
+      const alertMsg = `💰 <b>নতুন ডিপোজিট আবেদন (New Deposit Request)</b>\n\n👤 মেম্বার ইমেইল: <code>${userEmail}</code>\n💵 মেথড: <b>${selectedDepositMethod.toUpperCase()}</b>\n🔢 প্রেরক নম্বর: <code>${depositNumber}</code>\n🔑 ট্রানজেকশন আইডি (TrxID): <code>${depositTrx.toUpperCase().trim()}</code>\n💰 ডিপোজিট পরিমাণ: ৳<b>${amountVal.toFixed(1)}</b>\n💸 ডিপোজিট ফি (${feePercent}%): ৳<b>${feeAmount.toFixed(1)}</b>\n💎 মেম্বার পাবে (নিট): ৳<b>${netAmount.toFixed(1)}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে ভেরিফাই করতে এডমিন প্যানেল চেক করুন।`;
+      sendAdminTelegramNotification(alertMsg);
+
+      setDepositMessage({ text: 'আপনার ডিপোজিট অনুরোধ পাঠানো হয়েছে, অনুগ্রহ করে এডমিনের অনুমোদনের জন্য অপেক্ষা করুন! ✔', type: 'success' });
+      setDepositTrx('');
+      setDepositNumber('');
+      setDepositAmount('');
+      triggerToast('ডিপোজিট অনুরোধ পাঠানো হয়েছে!', 'success');
+      setTimeout(() => {
+        switchTab('home');
+        setDepositMessage({ text: '', type: '' });
+      }, 3000);
+    } catch (err: any) {
+      setDepositMessage({ text: 'ব্যর্থ হয়েছে: ' + err.message, type: 'error' });
+    } finally {
+      setIsSubmittingDeposit(false);
     }
   };
 
@@ -1840,6 +2016,78 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     );
   };
 
+  // Social account sells history dynamic fetcher
+  const handleFetchHistory = async (platform: string) => {
+    setIsLoadingHistory(true);
+    setSelectedHistoryPlatform(platform);
+    try {
+      if (platform === 'withdraw') {
+        const historyRef = ref(db, 'withdrawals');
+        const snapshot = await get(historyRef);
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const list = Object.values(data).filter((item: any) => item && item.userId === userId);
+          list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+          setHistoryList(list);
+        } else {
+          setHistoryList([]);
+        }
+        return;
+      }
+      if (platform === 'deposit') {
+        const historyRef = ref(db, 'deposit_requests');
+        const snapshot = await get(historyRef);
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const list = Object.values(data).filter((item: any) => item && item.userId === userId);
+          list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+          setHistoryList(list);
+        } else {
+          setHistoryList([]);
+        }
+        return;
+      }
+      const dbPath = `${platform}_sells`; // e.g. gmail_sells
+      const historyRef = ref(db, dbPath);
+      const snapshot = await get(historyRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const list = Object.values(data).filter((item: any) => item && item.userId === userId);
+        // Sort by newest first
+        list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+        setHistoryList(list);
+      } else {
+        setHistoryList([]);
+      }
+    } catch (err) {
+      console.error("Error fetching history:", err);
+      setHistoryList([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const [submittedCount24h, setSubmittedCount24h] = useState(0);
+
+  const updateSubmissionCount24h = async (platform: string) => {
+    try {
+      const dbPath = `${platform}_sells`;
+      const snapshot = await get(ref(db, dbPath));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const userSubmissions = Object.values(data).filter((item: any) => item && item.userId === userId);
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        const count = userSubmissions.filter((item: any) => item && (item.timestamp || 0) >= oneDayAgo).length;
+        setSubmittedCount24h(count);
+      } else {
+        setSubmittedCount24h(0);
+      }
+    } catch (err) {
+      console.error("Error updating 24h count:", err);
+      setSubmittedCount24h(0);
+    }
+  };
+
   // Submit Gmail Sell Request
   const handleGmailSell = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1871,6 +2119,24 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     setGmailMessage({ text: '', type: '' });
 
     try {
+      const limit = globalSettings.gmailDailyLimit ?? 0;
+      if (limit > 0) {
+        const snapshot = await get(ref(db, 'gmail_sells'));
+        let count = 0;
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const userSubmissions = Object.values(data).filter((item: any) => item && item.userId === userId);
+          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+          count = userSubmissions.filter((item: any) => item && (item.timestamp || 0) >= oneDayAgo).length;
+        }
+        if (count >= limit) {
+          setGmailMessage({ text: `⚠️ দুঃখিত! আপনার দৈনিক লিমিট (${limit} টি) শেষ হয়েছে। অনুগ্রহ করে আগামীকাল চেষ্টা করুন।`, type: 'error' });
+          triggerToast('দৈনিক সাবমিট লিমিট শেষ!', 'error');
+          setIsSubmittingGmail(false);
+          return;
+        }
+      }
+
       const salesRef = ref(db, 'gmail_sells');
       const newSaleRef = push(salesRef);
       await set(newSaleRef, {
@@ -1920,6 +2186,24 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     setTelegramMessage({ text: '', type: '' });
 
     try {
+      const limit = globalSettings.telegramDailyLimit ?? 0;
+      if (limit > 0) {
+        const snapshot = await get(ref(db, 'telegram_sells'));
+        let count = 0;
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const userSubmissions = Object.values(data).filter((item: any) => item && item.userId === userId);
+          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+          count = userSubmissions.filter((item: any) => item && (item.timestamp || 0) >= oneDayAgo).length;
+        }
+        if (count >= limit) {
+          setTelegramMessage({ text: `⚠️ দুঃখিত! আপনার দৈনিক লিমিট (${limit} টি) শেষ হয়েছে। অনুগ্রহ করে আগামীকাল চেষ্টা করুন।`, type: 'error' });
+          triggerToast('দৈনিক সাবমিট লিমিট শেষ!', 'error');
+          setIsSubmittingTelegram(false);
+          return;
+        }
+      }
+
       const salesRef = ref(db, 'telegram_sells');
       const newSaleRef = push(salesRef);
       await set(newSaleRef, {
@@ -1969,6 +2253,24 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     setWhatsappMessage({ text: '', type: '' });
 
     try {
+      const limit = globalSettings.whatsappDailyLimit ?? 0;
+      if (limit > 0) {
+        const snapshot = await get(ref(db, 'whatsapp_sells'));
+        let count = 0;
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const userSubmissions = Object.values(data).filter((item: any) => item && item.userId === userId);
+          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+          count = userSubmissions.filter((item: any) => item && (item.timestamp || 0) >= oneDayAgo).length;
+        }
+        if (count >= limit) {
+          setWhatsappMessage({ text: `⚠️ দুঃখিত! আপনার দৈনিক লিমিট (${limit} টি) শেষ হয়েছে। অনুগ্রহ করে আগামীকাল চেষ্টা করুন।`, type: 'error' });
+          triggerToast('দৈনিক সাবমিট লিমিট শেষ!', 'error');
+          setIsSubmittingWhatsapp(false);
+          return;
+        }
+      }
+
       const salesRef = ref(db, 'whatsapp_sells');
       const newSaleRef = push(salesRef);
       await set(newSaleRef, {
@@ -2018,6 +2320,24 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     setFacebookMessage({ text: '', type: '' });
 
     try {
+      const limit = globalSettings.facebookDailyLimit ?? 0;
+      if (limit > 0) {
+        const snapshot = await get(ref(db, 'facebook_sells'));
+        let count = 0;
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const userSubmissions = Object.values(data).filter((item: any) => item && item.userId === userId);
+          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+          count = userSubmissions.filter((item: any) => item && (item.timestamp || 0) >= oneDayAgo).length;
+        }
+        if (count >= limit) {
+          setFacebookMessage({ text: `⚠️ দুঃখিত! আপনার দৈনিক লিমিট (${limit} টি) শেষ হয়েছে। অনুগ্রহ করে আগামীকাল চেষ্টা করুন।`, type: 'error' });
+          triggerToast('দৈনিক সাবমিট লিমিট শেষ!', 'error');
+          setIsSubmittingFacebook(false);
+          return;
+        }
+      }
+
       const salesRef = ref(db, 'facebook_sells');
       const newSaleRef = push(salesRef);
       await set(newSaleRef, {
@@ -2069,6 +2389,24 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     setInstagramMessage({ text: '', type: '' });
 
     try {
+      const limit = globalSettings.instagramDailyLimit ?? 0;
+      if (limit > 0) {
+        const snapshot = await get(ref(db, 'instagram_sells'));
+        let count = 0;
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const userSubmissions = Object.values(data).filter((item: any) => item && item.userId === userId);
+          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+          count = userSubmissions.filter((item: any) => item && (item.timestamp || 0) >= oneDayAgo).length;
+        }
+        if (count >= limit) {
+          setInstagramMessage({ text: `⚠️ দুঃখিত! আপনার দৈনিক লিমিট (${limit} টি) শেষ হয়েছে। অনুগ্রহ করে আগামীকাল চেষ্টা করুন।`, type: 'error' });
+          triggerToast('দৈনিক সাবমিট লিমিট শেষ!', 'error');
+          setIsSubmittingInstagram(false);
+          return;
+        }
+      }
+
       const salesRef = ref(db, 'instagram_sells');
       const newSaleRef = push(salesRef);
       await set(newSaleRef, {
@@ -2235,6 +2573,10 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       const withdrawListRef = ref(db, 'withdrawals');
       const newWithdrawRef = push(withdrawListRef);
 
+      const feePercent = globalSettings.withdrawFeePercent || 0;
+      const feeAmount = parseFloat(((amt * feePercent) / 100).toFixed(2));
+      const netAmount = parseFloat((amt - feeAmount).toFixed(2));
+
       await set(newWithdrawRef, {
         id: newWithdrawRef.key,
         userId: userId,
@@ -2242,6 +2584,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         method: withdrawMethod,
         number: num,
         amount: amt,
+        feePercent: feePercent,
+        feeAmount: feeAmount,
+        netAmount: netAmount,
         status: 'pending',
         timestamp: Date.now(),
         balanceType: withdrawBalanceType
@@ -3122,13 +3467,22 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 <h3 className="text-lg font-bold tracking-tight truncate max-w-full">
                   {userData?.username || 'সম্পূর্ণ নাম...'}
                 </h3>
-                <button 
-                  onClick={() => handleCopy(userId, 'ইউজার আইডি কপি হয়েছে')}
-                  className="mt-2 text-xs font-mono bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition text-white/95"
-                >
-                  <Copy size={10} />
-                  <span>ID: {userId.substring(0, 10)}...</span>
-                </button>
+                <div className="flex gap-2 mt-2">
+                  <button 
+                    onClick={() => handleCopy(userId, 'ইউজার আইডি কপি হয়েছে')}
+                    className="text-[10px] font-mono bg-black/20 hover:bg-black/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 transition text-white/95"
+                  >
+                    <Copy size={9} />
+                    <span>ID: {userId.substring(0, 10)}...</span>
+                  </button>
+                  <button 
+                    onClick={() => switchTab('profile')}
+                    className="text-[10px] font-bold bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 transition text-white border border-white/10"
+                  >
+                    <Edit3 size={9} />
+                    <span>প্রোফাইল পরিবর্তন</span>
+                  </button>
+                </div>
               </div>
 
               {/* Side Nav menu items */}
@@ -3136,6 +3490,10 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 <button onClick={() => switchTab('home')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'home' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
                   <Home size={18} />
                   <span>হোম</span>
+                </button>
+                <button onClick={() => switchTab('profile')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'profile' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
+                  <User size={18} className="text-[#764ba2]" />
+                  <span>আমার প্রোফাইল (Edit Profile)</span>
                 </button>
                 <button onClick={() => switchTab('all-jobs')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'all-jobs' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
                   <Briefcase size={18} />
@@ -3152,6 +3510,10 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 <button onClick={() => switchTab('wallet')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'wallet' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
                   <Wallet size={18} />
                   <span>টাকা উত্তোলন (Wallet)</span>
+                </button>
+                <button onClick={() => switchTab('deposit')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'deposit' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
+                  <ArrowDownCircle size={18} className="text-[#764ba2]" />
+                  <span>অ্যাকাউন্ট ডিপোজিট (Deposit)</span>
                 </button>
                 <button onClick={() => switchTab('mission')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'mission' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
                   <Gift size={18} />
@@ -3262,105 +3624,111 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </div>
             )}
 
-            {/* Total Balance Card */}
-            <div className="bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white p-6 rounded-[30px] shadow-xl text-center relative overflow-hidden">
-              <div className="absolute top-[-40px] right-[-40px] w-32 h-32 bg-white/5 rounded-full blur-xl"></div>
-              <p className="text-white/80 text-xs font-semibold uppercase tracking-wider">মোট মেইন ব্যালেন্স</p>
-              <h1 className="text-4.5xl font-black my-1 font-sans">
-                ৳{(userData?.balance || 0).toFixed(2)}
-              </h1>
+            {/* Total Balance Card exactly matching the visual mockup */}
+            <div className="bg-gradient-to-r from-[#8a33f5] via-[#ca28e0] to-[#f92bb4] text-white p-6.5 rounded-[28px] shadow-lg relative overflow-hidden flex flex-col justify-between">
+              {/* Backglow decor circles for fluid layout */}
+              <div className="absolute top-[-25px] right-[-25px] w-48 h-48 bg-white/5 rounded-full blur-2xl"></div>
+              <div className="absolute bottom-[-35px] left-[-35px] w-40 h-40 bg-white/5 rounded-full blur-xl"></div>
               
-              <div className="mt-3 flex justify-center">
-                {(userData?.isActive || globalSettings.freeActivationEnabled) ? (
-                  <span className="bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-200 text-xs px-4 py-1.5 rounded-full font-bold flex items-center gap-1.5 shadow-sm">
-                    <CheckCircle size={12} className="text-emerald-300" />
-                    <span>ভেরিফাইড মেম্বার</span>
-                  </span>
-                ) : (
-                  <span className="bg-red-500/20 backdrop-blur-md border border-red-400/30 text-red-200 text-xs px-4 py-1.5 rounded-full font-bold flex items-center gap-1.5 shadow-sm">
-                    <XCircle size={12} className="text-red-300" />
-                    <span>ইনএকটিভ মেম্বার</span>
-                  </span>
-                )}
+              {/* Top balance section */}
+              <div className="flex justify-between items-start w-full relative z-10">
+                <div className="space-y-1.5">
+                  <span className="text-white/80 text-xs font-bold tracking-normal block">সর্বমোট ব্যালেন্স (All combined)</span>
+                  <div className="text-white text-4.5xl font-black font-sans leading-none flex items-center">
+                    ৳{((userData?.balance || 0) + 
+                       (userData?.gmailBalance || 0) + 
+                       (userData?.telegramBalance || 0) + 
+                       (userData?.whatsappBalance || 0) + 
+                       (userData?.facebookBalance || 0) + 
+                       (userData?.instagramBalance || 0) + 
+                       (userData?.adsBalance || 0)).toFixed(2)}
+                  </div>
+                </div>
+
+                {/* Translucent circled Wallet Icon wrapper */}
+                <div 
+                  onClick={() => switchTab('wallet')}
+                  className="flex items-center justify-center w-14 h-14 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition cursor-pointer shadow-inner shrink-0"
+                >
+                  <Wallet size={24} className="text-white" />
+                </div>
+              </div>
+
+              {/* Bento sub-grid for each individual sub-balance inside the card */}
+              <div className="mt-4.5 bg-white/10 border border-white/15 rounded-2xl p-3 grid grid-cols-3 gap-2.5 relative z-10 font-sans">
+                <div className="space-y-0.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">মূল ব্যালেন্স</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.balance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">জিমেইল</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.gmailBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">টেলিগ্রাম</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.telegramBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-1.5 border-t border-white/10">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">হোয়াটসঅ্যাপ</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.whatsappBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-1.5 border-t border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">ফেসবুক</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.facebookBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-1.5 border-t border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">ইনস্টাগ্রাম</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.instagramBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-2 border-t border-white/10 col-span-3">
+                  <div className="flex justify-between items-center px-1 font-bold">
+                    <span className="text-white/70 text-[9.5px]">বিজ্ঞাপন ব্যালেন্স:</span>
+                    <span className="text-amber-300 text-[11.5px] font-black">৳{(userData?.adsBalance || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom twin button actions */}
+              <div className="grid grid-cols-2 gap-3.5 mt-4.5 relative z-10">
+                <button 
+                  onClick={() => {
+                    if (globalSettings.depositMaintenanceEnabled) {
+                      triggerToast(globalSettings.depositMaintenanceMessage || 'ডিপোজিট এবং এক্টিভেশন সংক্রান্ত পেমেন্ট গেটওয়ে আপগ্রেড হচ্ছে।', 'error');
+                    } else {
+                      switchTab('deposit');
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 border border-white/20 bg-white/10 hover:bg-white/25 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-2xl transition cursor-pointer backdrop-blur-xs shadow-xs"
+                >
+                  <ArrowDown size={14} className="stroke-[3px]" />
+                  <span>DEPOSIT</span>
+                </button>
+
+                <button 
+                  onClick={() => {
+                    switchTab('wallet');
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 border border-white/20 bg-white/10 hover:bg-white/25 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-2xl transition cursor-pointer backdrop-blur-xs shadow-xs"
+                >
+                  <ArrowUp size={14} className="stroke-[3px]" />
+                  <span>WITHDRAW</span>
+                </button>
               </div>
             </div>
 
-            {/* AI Platforms Income Balances Bento Box */}
-            <div className="space-y-2 mt-4">
-              <span className="text-[10px] font-extrabold uppercase text-stone-400 tracking-wider block pl-2">সার্ভিস ভিত্তিক ইনকাম ব্যালেন্স (AI Platforms Income)</span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                {/* Gmail Balance Card */}
-                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-stone-500 text-[10px] font-bold">Gmail Earnings</span>
-                    <span className="w-2 h-2 rounded-full bg-teal-500"></span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.gmailBalance || 0).toFixed(2)}</h2>
-                    <span className="text-[9px] text-teal-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawGmail || 50}</span>
-                  </div>
-                </div>
-
-                {/* Telegram Balance Card */}
-                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-stone-500 text-[10px] font-bold">Telegram Earnings</span>
-                    <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.telegramBalance || 0).toFixed(2)}</h2>
-                    <span className="text-[9px] text-sky-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawTelegram || 50}</span>
-                  </div>
-                </div>
-
-                {/* WhatsApp Balance Card */}
-                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-stone-500 text-[10px] font-bold">WhatsApp Earnings</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.whatsappBalance || 0).toFixed(2)}</h2>
-                    <span className="text-[9px] text-emerald-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawWhatsapp || 50}</span>
-                  </div>
-                </div>
-
-                {/* Facebook Balance Card */}
-                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-stone-500 text-[10px] font-bold">Facebook Earnings</span>
-                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.facebookBalance || 0).toFixed(2)}</h2>
-                    <span className="text-[9px] text-indigo-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawFacebook || 50}</span>
-                  </div>
-                </div>
-
-                {/* Instagram Balance Card */}
-                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-stone-500 text-[10px] font-bold">Instagram Earnings</span>
-                    <span className="w-2 h-2 rounded-full bg-[#fa7e1e]"></span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.instagramBalance || 0).toFixed(2)}</h2>
-                    <span className="text-[9px] text-[#fa7e1e] font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawInstagram || 50}</span>
-                  </div>
-                </div>
-
-                {/* Ads Balance Card */}
-                <div className="bg-white border border-stone-200/80 p-3.5 rounded-2xl shadow-xs transition hover:shadow-md flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-stone-500 text-[10px] font-bold">Ads Earnings</span>
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-stone-800 font-sans">৳{(userData?.adsBalance || 0).toFixed(2)}</h2>
-                    <span className="text-[9px] text-amber-600 font-bold block mt-0.5">মিনিমাম উইথড্র: ৳{globalSettings.minWithdrawAds || 50}</span>
-                  </div>
-                </div>
-              </div>
+            {/* Verification Status Banner */}
+            <div className="flex justify-center mt-1 -mb-1">
+              {(userData?.isActive || globalSettings.freeActivationEnabled) ? (
+                <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 text-[10px] sm:text-xs px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 shadow-xs">
+                  <CheckCircle size={11} className="text-emerald-500" />
+                  <span>ভেরিফাইড মেম্বার (Verified Member)</span>
+                </span>
+              ) : (
+                <span className="bg-rose-50/80 border border-rose-200 text-rose-600 text-[10px] sm:text-xs px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 shadow-xs">
+                  <XCircle size={11} className="text-rose-500" />
+                  <span>ইনএকটিভ মেম্বার (একাউন্ট সচল করুন)</span>
+                </span>
+              )}
             </div>
 
             {/* Inactive verification notice box */}
@@ -3384,319 +3752,398 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </div>
             )}
 
-            {/* Nova Shop store gateway card */}
-            {onSwitchToNovaShop && (
-              <div 
-                onClick={() => {
-                  if (globalSettings.novashopMaintenanceEnabled) {
-                    setIsNovaShopMaintModalOpen(true);
-                  } else {
-                    onSwitchToNovaShop();
-                  }
-                }}
-                className="bg-gradient-to-r from-violet-600 to-indigo-700 text-white p-4.5 rounded-[22px] flex items-center justify-between shadow-lg hover:from-violet-700 hover:to-indigo-800 cursor-pointer transition active:scale-[0.98] border border-violet-500/20"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/10 text-white rounded-xl flex items-center justify-center shadow-inner shrink-0">
-                    <ShoppingBag size={22} className="text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xs.5 flex items-center gap-1.5 leading-normal">
-                      <span>নোভা শপ (Nova Shop)</span>
-                      <span className="text-[8px] bg-amber-450 text-neutral-950 font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest shrink-0">PREMIUM</span>
-                    </h3>
-                    <p className="text-white/80 text-[11px] mt-0.5 leading-normal font-semibold">প্রিমিয়াম ওয়েবসাইট ও ফাইল স্টোর</p>
-                  </div>
-                </div>
-                <ChevronRight size={18} className="text-white shrink-0" />
+            {/* AMADER SEBASUMUH GRID SECTION EXACTLY MATCHING THE MOCKUP */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1 mt-5">
+                <div className="w-[6px] h-[22px] bg-blue-600 rounded-full"></div>
+                <h2 className="text-base font-black text-slate-800 tracking-tight font-sans">আমাদের সেবাসমূহ</h2>
               </div>
-            )}
 
-            {/* Dynamic Added Websites (NEW FEATURE: Dynamic custom shops/sites) */}
-            {websites.map(web => (
-              <div 
-                key={web.id}
-                onClick={() => {
-                  if (web.maintenanceEnabled) {
-                    setActiveWebMaint(web);
-                  } else {
-                    window.open(web.url, '_blank');
-                  }
-                }}
-                className={`bg-gradient-to-r text-white p-4.5 rounded-[22px] flex items-center justify-between shadow-lg cursor-pointer transition active:scale-[0.98] border border-white/15 ${web.accentColor || 'from-violet-600 to-indigo-700'} hover:opacity-95`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/10 text-white rounded-xl flex items-center justify-center shadow-inner shrink-0">
-                    {web.iconName === 'ShoppingBag' && <ShoppingBag size={22} />}
-                    {web.iconName === 'Globe' && <Globe size={22} />}
-                    {web.iconName === 'Award' && <Award size={22} />}
-                    {web.iconName === 'Smartphone' && <Smartphone size={22} />}
-                    {web.iconName === 'Briefcase' && <Briefcase size={22} />}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[13px] flex items-center gap-1.5 leading-normal">
-                      <span>{web.name}</span>
-                      <span className="text-[8px] bg-amber-400 text-neutral-950 font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest shrink-0">STORE</span>
-                    </h3>
-                    <p className="text-white/80 text-[11px] mt-0.5 leading-normal font-semibold">{web.description}</p>
-                  </div>
-                </div>
-                <ChevronRight size={18} className="text-white shrink-0" />
-              </div>
-            ))}
-
-            {/* Micro Job Section Gateway card */}
-            <div 
-              onClick={() => switchTab('all-jobs')}
-              className="bg-white border border-stone-200 p-4 rounded-2xl flex items-center justify-between shadow-xs hover:border-stone-300 cursor-pointer transition active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                  <Briefcase size={22} className="text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-stone-800 text-sm">সব চলমান জব</h3>
-                  <p className="text-stone-500 text-xs mt-0.5">সবচেয়ে বেশি রেট দিয়ে ক্যাম্পেইনে কাজ করুন</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-stone-400" />
-            </div>
-
-            {/* Gmail Account Sell Gateway card */}
-            <div 
-              onClick={() => switchTab('gmail-sell')}
-              className="bg-white border border-stone-200 p-4 rounded-2xl flex items-center justify-between shadow-xs hover:border-stone-300 cursor-pointer transition active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
-                  <PlusCircle size={22} className="text-rose-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-stone-800 text-sm">জিমেইল জেনারেটর (Gmail Sell)</h3>
-                    {globalSettings.gmailMaintenanceEnabled && (
-                      <span className="bg-amber-100 text-amber-800 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">রক্ষণাবেক্ষণ</span>
-                    )}
-                  </div>
-                  <p className="text-stone-500 text-xs mt-0.5">জিমেইল আইডি জমা দিন - প্রতি পিস ৳{globalSettings.gmailPrice}</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-stone-400" />
-            </div>
-
-            {/* Telegram Account Sell Gateway card */}
-            <div 
-              onClick={() => switchTab('telegram-sell')}
-              className="bg-white border border-stone-200 p-4 rounded-2xl flex items-center justify-between shadow-xs hover:border-stone-300 cursor-pointer transition active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center">
-                  <Send size={22} className="text-sky-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-stone-800 text-sm">টেলিগ্রাম নাম্বার বিক্রি (Telegram Sell)</h3>
-                    {globalSettings.telegramMaintenanceEnabled && (
-                      <span className="bg-amber-100 text-amber-800 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">রক্ষণাবেক্ষণ</span>
-                    )}
-                  </div>
-                  <p className="text-stone-500 text-xs mt-0.5">টেলিগ্রাম আইডি বিক্রি করুন - প্রতি পিস ৳{globalSettings.telegramPrice || 20}</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-stone-400" />
-            </div>
-
-            {/* WhatsApp Account Sell Gateway card */}
-            <div 
-              onClick={() => switchTab('whatsapp-sell')}
-              className="bg-white border border-stone-200 p-4 rounded-2xl flex items-center justify-between shadow-xs hover:border-stone-300 cursor-pointer transition active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                  <MessageSquare size={22} className="text-emerald-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-stone-800 text-sm">হোয়াটসঅ্যাপ নাম্বার বিক্রি (WhatsApp Sell)</h3>
-                    {globalSettings.whatsappMaintenanceEnabled && (
-                      <span className="bg-amber-100 text-amber-800 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">রক্ষণাবেক্ষণ</span>
-                    )}
-                  </div>
-                  <p className="text-stone-500 text-xs mt-0.5">সহজ উপায়ে হোয়াটসঅ্যাপ বিক্রি - প্রতি পিস ৳{globalSettings.whatsappPrice || 30}</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-stone-400" />
-            </div>
-
-            {/* Facebook Account Sell Gateway card */}
-            <div 
-              onClick={() => switchTab('facebook-sell')}
-              className="bg-white border border-stone-200 p-4 rounded-2xl flex items-center justify-between shadow-xs hover:border-stone-300 cursor-pointer transition active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-                  <Facebook size={22} className="text-indigo-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-stone-800 text-sm">ফেসবুক আইডি বিক্রি (Facebook Sell)</h3>
-                    {globalSettings.facebookMaintenanceEnabled && (
-                      <span className="bg-amber-100 text-amber-800 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">রক্ষণাবেক্ষণ</span>
-                    )}
-                  </div>
-                  <p className="text-stone-500 text-xs mt-0.5">যেকোনো পুরাতন ফেসবুক আইডি বিক্রি - প্রতি পিস ৳{globalSettings.facebookPrice || 25}</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-stone-400" />
-            </div>
-
-            {/* Instagram Account Sell Gateway card */}
-            <div 
-              onClick={() => switchTab('instagram-sell')}
-              className="bg-white border border-stone-200 p-4 rounded-2xl flex items-center justify-between shadow-xs hover:border-stone-300 cursor-pointer transition active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
-                  <Instagram size={22} className="text-rose-500" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-stone-800 text-sm">ইন্সটাগ্রাম আইডি বিক্রি (Instagram Sell)</h3>
-                    {globalSettings.instagramMaintenanceEnabled && (
-                      <span className="bg-amber-100 text-amber-800 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">রক্ষণাবেক্ষণ</span>
-                    )}
-                  </div>
-                  <p className="text-stone-500 text-xs mt-0.5">পুরাতন ইন্সটাগ্রাম আইডি বিক্রি - প্রতি পিস ৳{globalSettings.instagramPrice || 20}</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-stone-400" />
-            </div>
-
-            {/* Campaign Poster Creator Action gateway */}
-            <div 
-              onClick={() => switchTab('post-job')}
-              className="bg-gradient-to-r from-teal-500 to-emerald-600 text-white p-4 rounded-2xl flex items-center justify-between shadow-md cursor-pointer transition hover:opacity-95 active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/10 text-white rounded-xl flex items-center justify-center">
-                  <Upload size={22} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">নতুন জব পোস্ট করুন</h3>
-                  <p className="text-white/90 text-xs mt-0.5">গ্রাহক বা ফলোয়ার বাড়াতে নতুন ক্যাম্পেইন চালু করুন</p>
-                </div>
-              </div>
-              <ChevronRight size={18} />
-            </div>
-
-            {/* Dynamic Watching Ads List (NEW FEATURE) with Adsterra integration */}
-            {(ads.length > 0 || globalSettings.adsterraDirectLink) && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-stone-700 font-bold px-1 text-sm">
-                  <Play size={16} className="text-[#764ba2]" />
-                  <span>বিজ্ঞাপন থেকে বোনাস ইনকাম</span>
-                </div>
-
-                {globalSettings.adsterraDirectLink && (
-                  <div className="bg-[#764ba2]/5 border border-[#764ba2]/10 p-4.5 rounded-[24px] relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute top-[-20px] left-[-20px] w-16 h-16 bg-[#764ba2]/10 rounded-full blur-lg"></div>
-                    <div className="absolute bottom-[-20px] right-[-20px] w-16 h-16 bg-[#667eea]/10 rounded-full blur-lg"></div>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="bg-amber-100 text-amber-800 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Sponsor</span>
-                        <span className="bg-indigo-100 text-[#764ba2] text-[8px] font-bold px-2 py-0.5 rounded-full">এডস্টেরা স্পেশাল</span>
-                      </div>
-                      <span className="text-xs font-black text-rose-600 font-sans">
-                        ৳{parseFloat(globalSettings.adsterraDirectReward as any || '0.15').toFixed(2)}
-                      </span>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 select-none">
+                {/* 1. Gmail Sell */}
+                <div 
+                  onClick={() => switchTab('gmail-sell')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-rose-500/10 rounded-2xl blur-xs"></div>
+                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" fill="#EA4335" />
+                        <path d="M22 6l-10 7L2 6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </div>
-                    <h4 className="font-bold text-xs text-stone-800 mb-1">স্পেশাল বিজ্ঞাপন দেখে ৳{globalSettings.adsterraDirectReward || '0.15'} আয় করুন!</h4>
-                    {(() => {
-                      const todayStr = new Date().toISOString().split('T')[0];
-                      const lastDate = userData?.lastAdsterraDate || '';
-                      const currentCount = (lastDate === todayStr) ? (userData?.dailyAdsterraCount || 0) : 0;
-                      const limit = globalSettings.adsterraDailyLimit || 10;
-                      return (
-                        <div className="text-[10px] text-[#764ba2] font-black mb-2 bg-[#764ba2]/10 px-2.5 py-1 rounded-lg w-fit inline-block">
-                          আজকের লিমিট: {currentCount} / {limit} টি বিজ্ঞাপন
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Gmail Sell</span>
+                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.gmailPrice || 5.0}</span>
+                  </div>
+                </div>
+
+                {/* 2. Facebook Sell */}
+                <div 
+                  onClick={() => switchTab('facebook-sell')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-blue-600/10 rounded-2xl blur-xs"></div>
+                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Facebook</span>
+                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.facebookPrice || 25}</span>
+                  </div>
+                </div>
+
+                {/* 3. Instagram Sell */}
+                <div 
+                  onClick={() => switchTab('instagram-sell')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative overflow-hidden rounded-2xl">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-[#fdf497] via-[#fd5949] to-[#d6249f] opacity-15"></div>
+                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
+                        <defs>
+                          <radialGradient id="ig-grad-seba" cx="30%" cy="107%" r="130%">
+                            <stop offset="0%" stopColor="#fdf497" />
+                            <stop offset="5%" stopColor="#fdf497" />
+                            <stop offset="45%" stopColor="#fd5949" />
+                            <stop offset="60%" stopColor="#d6249f" />
+                            <stop offset="100%" stopColor="#285AEB" />
+                          </radialGradient>
+                        </defs>
+                        <rect width="24" height="24" rx="6" fill="url(#ig-grad-seba)" />
+                        <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8.2c-1.77 0-3.2-1.43-3.2-3.2s1.43-3.2 3.2-3.2 3.2 1.43 3.2 3.2-1.43 3.2-3.2 3.2zm5.3-8.82c0-.64.52-1.16 1.16-1.16s1.16.52 1.16 1.16-.52 1.16-1.16 1.16-1.16-.52-1.16-1.16z" fill="#fff" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Instagram</span>
+                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.instagramPrice || 20}</span>
+                  </div>
+                </div>
+
+                {/* 4. Telegram Sell */}
+                <div 
+                  onClick={() => switchTab('telegram-sell')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative overflow-hidden rounded-2xl">
+                      <div className="absolute inset-0 bg-sky-500/10 rounded-2xl blur-xs"></div>
+                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
+                        <rect width="24" height="24" rx="6" fill="#229ED9" />
+                        <path d="M18.8 6.4c-.1-.1-.3-.1-.4 0l-13.6 5.2c-.3.1-.3.5 0 .6l3.1 1 7.2-4.5c.1-.1.2.1.1.2l-5.8 5.3-.2 2.6c0 .3.4.4.6.1l1.7-1.6 3.4 2.5c.2.1.5 0 .6-.2l3.4-11c0-.1 0-.2-.1-.2z" fill="#fff" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Telegram</span>
+                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.telegramPrice || 20}</span>
+                  </div>
+                </div>
+
+                {/* 5. WhatsApp Sell */}
+                <div 
+                  onClick={() => switchTab('whatsapp-sell')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative overflow-hidden rounded-2xl">
+                      <div className="absolute inset-0 bg-emerald-500/10 rounded-2xl blur-xs"></div>
+                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
+                        <rect width="24" height="24" rx="6" fill="#25D366" />
+                        <path d="M12.01 5c-3.86 0-7 3.14-7 7 0 1.42.42 2.74 1.14 3.86l-.75 2.25 2.33-.73c1.07.65 2.3 1.02 3.63 1.02 3.86 0 7-3.14 7-7s-3.14-7-7-7zm2.4 9.17c-.15.42-.77.78-1.2.83-.37.05-.85-.14-2.43-.79-1.92-.79-3.16-2.75-3.26-2.88-.1-.13-.78-1.04-.78-1.98 0-.94.49-1.4 1.34-1.4.19 0 .34.01.46.01.12 0 .28-.05.44.34.16.39.56 1.37.61 1.47.05.1.08.22.01.35-.07.13-.19.28-.3.4l-.18.15c-.1.1-.21.21-.09.4.52.88 1.29 1.58 2.2 1.94.13.05.25.07.35-.05.12-.15.52-.61.66-.82.14-.2.28-.17.47-.1.19.07 1.2.56 1.4.67.21.11.35.16.4.25.05.09.05.52-.1.94z" fill="#fff" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">WhatsApp</span>
+                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.whatsappPrice || 35}</span>
+                  </div>
+                </div>
+
+                {/* 6. Micro Job */}
+                <div 
+                  onClick={() => switchTab('all-jobs')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-amber-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Briefcase className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Micro Job</span>
+                    <span className="text-[8.5px] text-stone-400 font-bold leading-none block">কাজ করুন</span>
+                  </div>
+                </div>
+
+                {/* 7. Job Post */}
+                <div 
+                  onClick={() => switchTab('post-job')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-blue-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <PlusCircle className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Job Post</span>
+                    <span className="text-[8.5px] text-stone-400 font-bold leading-none block">পোস্ট করুন</span>
+                  </div>
+                </div>
+
+                {/* 8. Lucky Spin */}
+                <div 
+                  onClick={() => switchTab('spin')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-purple-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-400 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Compass className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Spin & Earn</span>
+                    <span className="text-[8.5px] text-purple-600 font-black leading-none block">LUCKY</span>
+                  </div>
+                </div>
+
+                {/* 9. Tic Tac Toe Game */}
+                <div 
+                  onClick={() => switchTab('game')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-fuchsia-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-fuchsia-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Gamepad2 className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Game Zone</span>
+                    <span className="text-[8.5px] text-fuchsia-600 font-bold leading-none block">খেলে আয়</span>
+                  </div>
+                </div>
+
+                {/* 10. Investment Plans */}
+                <div 
+                  onClick={() => switchTab('investment-plans')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-emerald-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <TrendingUp className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Investment</span>
+                    <span className="text-[8.5px] text-emerald-600 font-bold leading-none block">আয় বৃদ্ধি</span>
+                  </div>
+                </div>
+
+                {/* 11. Refer & Earn */}
+                <div 
+                  onClick={() => switchTab('refer')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-indigo-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-[#764ba2] rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <UserPlus className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Refer</span>
+                    <span className="text-[8.5px] text-[#764ba2] font-black leading-none block">৳১০ বোনাস</span>
+                  </div>
+                </div>
+
+                {/* 12. Daily Mission */}
+                <div 
+                  onClick={() => switchTab('mission')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-rose-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Gift className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Daily Task</span>
+                    <span className="text-[8.5px] text-rose-500 font-bold leading-none block">মিশন</span>
+                  </div>
+                </div>
+
+                {/* 13. Balance Transfer */}
+                <div 
+                  onClick={() => switchTab('transfer')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-cyan-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-cyan-550 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <ArrowLeftRight className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Transfer</span>
+                    <span className="text-[8.5px] text-cyan-600 font-semibold leading-none block">পাঠান</span>
+                  </div>
+                </div>
+
+                {/* 14. Wallet / Withdraw */}
+                <div 
+                  onClick={() => switchTab('wallet')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-teal-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-teal-550 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Wallet className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">My Wallet</span>
+                    <span className="text-[8.5px] text-teal-600 font-bold leading-none block">টাকা উত্তোলন</span>
+                  </div>
+                </div>
+
+                {/* 14.5 Watch Ads (Ads Income) */}
+                <div 
+                  onClick={() => switchTab('ads')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-red-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Play className="stroke-[2.5px] fill-white" size={14} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Watch Ads</span>
+                    <span className="text-[8.5px] text-red-600 font-bold leading-none block">বিজ্ঞাপন আয়</span>
+                  </div>
+                </div>
+
+                {/* 14.6 Help & Customer Support */}
+                <div 
+                  onClick={() => switchTab('support')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-blue-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <HelpCircle className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Support</span>
+                    <span className="text-[8.5px] text-blue-600 font-bold leading-none block">সার্ভিস সাপোর্ট</span>
+                  </div>
+                </div>
+
+                {/* 15. Nova Shop Gateway (if available) */}
+                {onSwitchToNovaShop && (
+                  <div 
+                    onClick={() => {
+                      if (globalSettings.novashopMaintenanceEnabled) {
+                        setIsNovaShopMaintModalOpen(true);
+                      } else {
+                        onSwitchToNovaShop();
+                      }
+                    }}
+                    className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                  >
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="w-12 h-12 flex items-center justify-center relative rounded-2xl">
+                        <div className="absolute inset-0 bg-violet-600/10 rounded-2xl blur-xs"></div>
+                        <div className="w-10 h-10 bg-gradient-to-r from-violet-600 to-indigo-700 rounded-xl flex items-center justify-center text-white shadow-xs">
+                          <ShoppingBag className="stroke-[2.5px]" size={18} />
                         </div>
-                      );
-                    })()}
-                    <p className="text-stone-500 text-[10px] leading-relaxed mb-3">
-                      নিচের বাটনে ক্লিক করে বিজ্ঞাপনটি স্ক্রিনে ১৫ সেকেন্ড লোড রাখুন এবং ক্লেইম বোনাস সম্পন্ন করুন।
-                    </p>
-                    <button 
-                      onClick={handleWatchAdsterraAd}
-                      disabled={isAdWatching || isAdsterraWatching}
-                      className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white text-[11px] font-bold py-2.5 rounded-xl transition disabled:bg-stone-300 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-                    >
-                      <Play size={10} className="fill-white" />
-                      {isAdsterraWatching ? `অপেক্ষা করুন... ${adsterraCountdown}S` : 'স্পেশাল এড দেখুন'}
-                    </button>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Nova Shop</span>
+                      <span className="text-[8.5px] text-violet-600 font-black leading-none block">PREMIUM</span>
+                    </div>
                   </div>
                 )}
 
-                {ads.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {ads.map(ad => (
-                      <div 
-                        key={ad.id} 
-                        className="bg-white border border-stone-200 p-3.5 rounded-2xl flex flex-col justify-between shadow-xs text-center"
-                      >
-                        <div>
-                          <h4 className="font-bold text-xs text-stone-800 truncate mb-1">{ad.title}</h4>
-                          <span className="inline-block bg-indigo-50 text-xs font-bold text-indigo-600 px-2 py-0.5 rounded-md mb-3">
-                            ৳{(ad.reward || 0.1).toFixed(2)}
-                          </span>
-                        </div>
-                        <button 
-                          onClick={() => handleWatchAd(ad)}
-                          disabled={isAdWatching}
-                          className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white text-[11px] font-bold py-2 rounded-xl transition disabled:bg-stone-300 disabled:cursor-not-allowed"
-                        >
-                          {isAdWatching && currentActiveAd?.id === ad.id ? `${adCountdown}S অপেক্ষা...` : 'ভিডিও দেখুন'}
-                        </button>
+                {/* Quick Task Custom Menu button */}
+                <div 
+                  onClick={() => switchTab('quick-tasks')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-amber-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <TrendingUp className="stroke-[2.5px]" size={18} />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Admin configured shortcut Home Tasks shortcuts lists */}
-            {homeTasks.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-stone-700 font-bold px-1 text-sm">
-                  <TrendingUp size={16} className="text-[#764ba2]" />
-                  <span>কুইক টাস্ক সমূহ</span>
-                </div>
-                <div className="space-y-2.5">
-                  {homeTasks.map(task => (
-                    <div 
-                      key={task.id}
-                      className="bg-white border border-stone-150 p-3.5 rounded-2xl flex items-center justify-between shadow-xs"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img 
-                          src={task.icon || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100'} 
-                          className="w-10 h-10 rounded-xl object-cover shrink-0" 
-                          alt="TaskIcon" 
-                        />
-                        <span className="font-semibold text-stone-800 text-xs truncate">{task.name}</span>
-                      </div>
-                      <a 
-                        href={task.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="bg-stone-100 hover:bg-[#764ba2]/10 hover:text-[#764ba2] text-stone-600 font-bold text-[11px] py-2 px-4 rounded-xl transition shrink-0"
-                      >
-                        ফ্রি কাজের লিংক
-                      </a>
                     </div>
-                  ))}
+                  </div>
+                  <div className="space-y-0.5 font-sans">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Quick Task</span>
+                    <span className="text-[8.5px] text-amber-600 font-black leading-none block">ফ্রি টাস্ক</span>
+                  </div>
                 </div>
+
+                {/* Other Sites Custom Menu button */}
+                <div 
+                  onClick={() => switchTab('other-sites')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-indigo-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Globe className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 font-sans">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Other Sites</span>
+                    <span className="text-[8.5px] text-indigo-600 font-black leading-none block">অন্যান্য সাইট</span>
+                  </div>
+                </div>
+
               </div>
-            )}
+            </div>
 
             {/* Quick Stats Panel */}
             <div className="grid grid-cols-2 gap-4">
@@ -3927,6 +4374,17 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               <span>টাকা উত্তোলন (পেমেন্ট রিকোয়েস্ট)</span>
             </h2>
 
+            {/* Main Balance Display Card above withdrawal system */}
+            <div className="bg-gradient-to-r from-[#764ba2] to-[#5a3b80] p-5 rounded-3xl text-white shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-black tracking-widest text-purple-200 block">আপনার মূল ব্যালেন্স (Main Balance)</span>
+                <span className="text-3xl font-black font-mono">৳{(userData?.balance || 0).toFixed(2)}</span>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-xs">
+                <Coins size={22} className="text-white shrink-0 animate-pulse" />
+              </div>
+            </div>
+
             <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
               <div className="flex bg-indigo-50/50 p-4 rounded-2xl items-center gap-3">
                 <Coins size={20} className="text-[#764ba2] shrink-0" />
@@ -3936,50 +4394,138 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </div>
 
               <form onSubmit={handleWithdrawSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-700 block pl-1">ওয়ালেট নির্বাচন করুন</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div 
-                      onClick={() => setWithdrawMethod('Bkash')}
-                      className={`p-3.5 border-2 rounded-2xl text-center cursor-pointer font-bold text-xs transition ${withdrawMethod === 'Bkash' ? 'border-[#E2136E] bg-[#E2136E]/5 text-[#E2136E]' : 'border-stone-200 text-stone-500'}`}
-                    >
-                      bKash (বিকাশ)
+                {/* 1. Withdraw Method Dropdown Box */}
+                <div className="space-y-2 relative">
+                  <label className="text-xs font-bold text-stone-700 block pl-1">ওয়ালেট নির্বাচন করুন (Select Wallet)</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMethodDropdownOpen(!isMethodDropdownOpen);
+                      setIsCategoryDropdownOpen(false);
+                    }}
+                    className="w-full bg-stone-50 border-2 border-stone-150 rounded-2xl p-4 font-bold text-left text-xs text-stone-700 transition flex items-center justify-between cursor-pointer hover:bg-stone-100/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      {withdrawMethod === 'Bkash' ? (
+                        <>
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#E2136E]" />
+                          <span className="font-extrabold text-[#E2136E]">bKash (বিকাশ)</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#F7941D]" />
+                          <span className="font-extrabold text-[#F7941D]">Nagad (নগদ)</span>
+                        </>
+                      )}
                     </div>
-                    <div 
-                      onClick={() => setWithdrawMethod('Nagad')}
-                      className={`p-3.5 border-2 rounded-2xl text-center cursor-pointer font-bold text-xs transition ${withdrawMethod === 'Nagad' ? 'border-[#F7941D] bg-[#F7941D]/5 text-[#F7941D]' : 'border-stone-200 text-stone-500'}`}
+                    <ChevronDown size={14} className={`text-stone-400 transition-transform duration-200 ${isMethodDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isMethodDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -5 }} 
+                      animate={{ opacity: 1, y: 0 }} 
+                      className="absolute z-30 w-full mt-1 bg-white border-2 border-stone-150 rounded-2xl shadow-md p-2 space-y-1"
                     >
-                      Nagad (নগদ)
-                    </div>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWithdrawMethod('Bkash');
+                          setIsMethodDropdownOpen(false);
+                        }}
+                        className={`w-full p-3.5 rounded-xl cursor-pointer text-left text-xs font-bold transition flex items-center gap-3.5 ${withdrawMethod === 'Bkash' ? 'bg-[#E2136E]/10 text-[#E2136E]' : 'text-stone-605 text-stone-600 hover:bg-stone-50'}`}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-[#E2136E]" />
+                        bKash (বিকাশ)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWithdrawMethod('Nagad');
+                          setIsMethodDropdownOpen(false);
+                        }}
+                        className={`w-full p-3.5 rounded-xl cursor-pointer text-left text-xs font-bold transition flex items-center gap-3.5 ${withdrawMethod === 'Nagad' ? 'bg-[#F7941D]/10 text-[#F7941D]' : 'text-stone-605 text-stone-600 hover:bg-stone-50'}`}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-[#F7941D]" />
+                        Nagad (নগদ)
+                      </button>
+                    </motion.div>
+                  )}
                 </div>
 
-                <div className="space-y-2 col-span-full">
-                  <label className="text-xs font-bold text-stone-700 block pl-1">উৎস ব্যালেন্স নির্বাচন করুন (Withdrawal Fund Source)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                    {[
-                      { type: 'main', label: 'Main Bal', bal: userData?.balance || 0, min: globalSettings.minWithdraw || 50 },
-                      { type: 'gmail', label: 'Gmail', bal: userData?.gmailBalance || 0, min: globalSettings.minWithdrawGmail || 50 },
-                      { type: 'telegram', label: 'Telegram', bal: userData?.telegramBalance || 0, min: globalSettings.minWithdrawTelegram || 50 },
-                      { type: 'whatsapp', label: 'WhatsApp', bal: userData?.whatsappBalance || 0, min: globalSettings.minWithdrawWhatsapp || 50 },
-                      { type: 'facebook', label: 'Facebook', bal: userData?.facebookBalance || 0, min: globalSettings.minWithdrawFacebook || 50 },
-                      { type: 'instagram', label: 'Instagram', bal: userData?.instagramBalance || 0, min: globalSettings.minWithdrawInstagram || 50 },
-                      { type: 'ads', label: 'Ads Bal', bal: userData?.adsBalance || 0, min: globalSettings.minWithdrawAds || 50 }
-                    ].map((item) => (
-                      <div 
-                        key={item.type}
-                        onClick={() => {
-                          setWithdrawBalanceType(item.type as any);
-                          setWithdrawAmount('');
-                        }}
-                        className={`p-2.5 border-2 rounded-2xl text-center cursor-pointer transition flex flex-col justify-between ${withdrawBalanceType === item.type ? 'border-[#764ba2] bg-[#764ba2]/5' : 'border-stone-150 bg-white hover:bg-stone-50'}`}
-                      >
-                        <span className="text-[10px] text-stone-500 font-extrabold block leading-none">{item.label}</span>
-                        <strong className="text-xs font-black text-stone-850 block my-1">৳{item.bal.toFixed(1)}</strong>
-                        <span className="text-[8px] text-stone-400 font-bold block leading-none">Min: ৳{item.min}</span>
-                      </div>
-                    ))}
-                  </div>
+                {/* 2. Balance Category Dropdown Box */}
+                <div className="space-y-2 relative">
+                  <label className="text-xs font-bold text-stone-700 block pl-1">উৎস ব্যালেন্স নির্বাচন করুন (Select Balance Category)</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+                      setIsMethodDropdownOpen(false);
+                    }}
+                    className="w-full bg-stone-50 border-2 border-stone-150 rounded-2xl p-4 font-bold text-left text-xs text-stone-700 transition flex items-center justify-between cursor-pointer hover:bg-stone-100/50 font-sans"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                      <span className="font-extrabold capitalize text-stone-800">
+                        {
+                          withdrawBalanceType === 'main' ? 'Main balance (মূল ব্যালেন্স)' :
+                          withdrawBalanceType === 'gmail' ? 'Gmail Balance' :
+                          withdrawBalanceType === 'telegram' ? 'Telegram Balance' :
+                          withdrawBalanceType === 'whatsapp' ? 'WhatsApp Balance' :
+                          withdrawBalanceType === 'facebook' ? 'Facebook Balance' :
+                          withdrawBalanceType === 'instagram' ? 'Instagram Balance' :
+                          'Ads/Adsterra Balance'
+                        }
+                      </span>
+                      <span className="text-indigo-600 font-extrabold text-[10.5px] bg-indigo-50 px-2.5 py-0.5 rounded-md font-mono">
+                        ৳{
+                          withdrawBalanceType === 'main' ? (userData?.balance || 0).toFixed(2) :
+                          withdrawBalanceType === 'gmail' ? (userData?.gmailBalance || 0).toFixed(2) :
+                          withdrawBalanceType === 'telegram' ? (userData?.telegramBalance || 0).toFixed(2) :
+                          withdrawBalanceType === 'whatsapp' ? (userData?.whatsappBalance || 0).toFixed(2) :
+                          withdrawBalanceType === 'facebook' ? (userData?.facebookBalance || 0).toFixed(2) :
+                          withdrawBalanceType === 'instagram' ? (userData?.instagramBalance || 0).toFixed(2) :
+                          (userData?.adsBalance || 0).toFixed(2)
+                        }
+                      </span>
+                    </div>
+                    <ChevronDown size={14} className={`text-stone-400 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isCategoryDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -5 }} 
+                      animate={{ opacity: 1, y: 0 }} 
+                      className="absolute z-20 w-full mt-1 bg-white border-2 border-stone-150 rounded-2xl shadow-md p-2 space-y-1 max-h-64 overflow-y-auto font-sans"
+                    >
+                      {[
+                        { type: 'main', label: 'Main balance (মূল ব্যালেন্স)', bal: userData?.balance || 0, min: globalSettings.minWithdraw || 50 },
+                        { type: 'gmail', label: 'Gmail Balance', bal: userData?.gmailBalance || 0, min: globalSettings.minWithdrawGmail || 50 },
+                        { type: 'telegram', label: 'Telegram Balance', bal: userData?.telegramBalance || 0, min: globalSettings.minWithdrawTelegram || 50 },
+                        { type: 'whatsapp', label: 'WhatsApp Balance', bal: userData?.whatsappBalance || 0, min: globalSettings.minWithdrawWhatsapp || 50 },
+                        { type: 'facebook', label: 'Facebook Balance', bal: userData?.facebookBalance || 0, min: globalSettings.minWithdrawFacebook || 50 },
+                        { type: 'instagram', label: 'Instagram Balance', bal: userData?.instagramBalance || 0, min: globalSettings.minWithdrawInstagram || 50 },
+                        { type: 'ads', label: 'Ads/Adsterra Balance', bal: userData?.adsBalance || 0, min: globalSettings.minWithdrawAds || 50 }
+                      ].map((item) => (
+                        <button 
+                          key={item.type}
+                          type="button"
+                          onClick={() => {
+                            setWithdrawBalanceType(item.type as any);
+                            setWithdrawAmount('');
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className={`w-full p-3 rounded-xl cursor-pointer text-left text-xs transition flex justify-between items-center ${withdrawBalanceType === item.type ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'text-stone-600 hover:bg-stone-50 font-bold'}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="block truncate text-stone-750">{item.label}</span>
+                            <span className="text-[9px] text-stone-400 font-semibold bg-stone-100 rounded px-1.5 py-0.5 leading-none">Min: ৳{item.min}</span>
+                          </div>
+                          <strong className="text-stone-850 font-mono text-xs">৳{item.bal.toFixed(2)}</strong>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -3994,7 +4540,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 flex flex-col">
                   <label className="text-xs font-bold text-stone-700 block pl-1">টাকার পরিমাণ (৳)</label>
                   <input 
                     type="number" 
@@ -4004,6 +4550,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       withdrawBalanceType === 'whatsapp' ? (globalSettings.minWithdrawWhatsapp || 50) : 
                       withdrawBalanceType === 'facebook' ? (globalSettings.minWithdrawFacebook || 50) : 
                       withdrawBalanceType === 'instagram' ? (globalSettings.minWithdrawInstagram || 50) : 
+                      withdrawBalanceType === 'ads' ? (globalSettings.minWithdrawAds || 50) :
                       (globalSettings.minWithdraw || 50)
                     }`}
                     value={withdrawAmount}
@@ -4012,6 +4559,30 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     required
                   />
                 </div>
+
+                {/* Real-time Withdrawal Fee Calculation Screen details */}
+                {parseFloat(withdrawAmount) > 0 && !isNaN(parseFloat(withdrawAmount)) && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }} 
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="bg-stone-50 border-2 border-dashed border-stone-200/80 p-4 rounded-2xl space-y-2 font-sans overflow-hidden"
+                  >
+                    <div className="flex justify-between text-xs font-bold text-stone-500">
+                      <span>উত্তোলন টোটাল :</span>
+                      <span className="font-mono text-stone-750">৳{parseFloat(withdrawAmount).toFixed(2)}</span>
+                    </div>
+                    {globalSettings.withdrawFeePercent ? (
+                      <div className="flex justify-between text-xs font-semibold text-stone-500">
+                        <span>উইথড্র চার্জ ফি ({globalSettings.withdrawFeePercent}%):</span>
+                        <span className="font-mono text-red-500">-৳{((parseFloat(withdrawAmount) * globalSettings.withdrawFeePercent) / 100).toFixed(2)}</span>
+                      </div>
+                    ) : null}
+                    <div className="border-t border-stone-150 pt-2.5 mt-1 flex justify-between text-xs font-black text-stone-850">
+                      <span>আপনি পাবেন (নিট পেমেন্ট):</span>
+                      <span className="font-mono text-emerald-600 text-sm">৳{(parseFloat(withdrawAmount) - ((parseFloat(withdrawAmount) * (globalSettings.withdrawFeePercent || 0)) / 100)).toFixed(2)}</span>
+                    </div>
+                  </motion.div>
+                )}
 
                 {withdrawMessage.text && (
                   <div className={`p-4 rounded-2xl text-xs font-bold leading-relaxed flex items-center gap-2 ${withdrawMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
@@ -4030,48 +4601,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </form>
             </div>
 
-            {/* Withdrawal History Card */}
+            {/* Withdrawal History Card to behave like Gmail Sell History */}
             <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
-              <h3 className="text-xs font-black tracking-wider text-stone-500 uppercase flex items-center gap-1.5 pl-1">
-                <History size={14} className="text-stone-400" />
-                <span>আপনার উইথড্রয়াল ইতিহাস ও স্ট্যাটাস</span>
-              </h3>
-              
-              {withdrawals.length === 0 ? (
-                <div className="text-stone-400 text-xs font-semibold py-6 text-center border-2 border-dashed border-stone-150 rounded-2xl bg-stone-50/30">
-                  এখনো পর্যন্ত কোনো উত্তোলনের রিকোয়েস্ট নেই।
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {withdrawals.map((item: any) => {
-                    const date = item.timestamp ? new Date(item.timestamp).toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }) : 'অজানা সময়';
-                    const statusStr = item.status === 'Approved' ? 'সফল (Approved) ✅' : item.status === 'Rejected' ? 'বাতিল (Rejected) ❌' : 'অপেক্ষমান (Pending) ⏳';
-                    const statusColor = item.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-150' : item.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-150' : 'bg-amber-50 text-amber-500 border-amber-150';
-                    return (
-                      <div key={item.id} className="p-3.5 border border-stone-150 rounded-2xl bg-stone-50/25 flex flex-col justify-between gap-2.5 transition hover:bg-stone-50/55">
-                        <div className="flex justify-between items-start gap-1">
-                          <div>
-                            <div className="text-[11px] font-black text-stone-750 flex items-center gap-1.5">
-                              <span>৳{parseFloat(item.amount || '0').toFixed(2)}</span>
-                              <span className="font-semibold text-[9px] text-[#764ba2] bg-[#764ba2]/5 px-1.5 py-0.5 rounded-md uppercase leading-none">{item.balanceType || 'main'}</span>
-                            </div>
-                            <div className="text-[10px] text-stone-400 font-bold mt-1">পদ্ধতি: {item.method} ({item.number})</div>
-                          </div>
-                          <span className={`text-[9px] font-black tracking-wide border px-2.5 py-1.5 rounded-xl uppercase leading-none ${statusColor}`}>
-                            {statusStr}
-                          </span>
-                        </div>
-                        <div className="text-[9px] text-stone-400 font-medium font-mono text-right">{date}</div>
-                        {item.adminRejectReason && (
-                          <div className="bg-rose-100/50 border border-rose-200 text-rose-800 text-[10px] p-2 rounded-xl mt-1 leading-relaxed font-semibold">
-                            ⚠️ বাতিলের কারণ: {item.adminRejectReason}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <button 
+                type="button"
+                onClick={() => handleFetchHistory('withdraw')}
+                className="w-full bg-white hover:bg-stone-50 text-stone-700 border-2 border-stone-150 font-bold py-3 rounded-2xl shadow-2xs transition flex items-center justify-center gap-1.5 text-xs font-sans cursor-pointer"
+              >
+                <History size={13} />
+                <span>উইথড্র হিস্টোরি (লগ)</span>
+              </button>
             </div>
           </motion.div>
         ))}
@@ -4160,15 +4699,43 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         {/* VIEW 6: GMAIL SELL */}
         {activeTab === 'gmail-sell' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-300 bg-white hover:bg-stone-50 font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs">
-              <ChevronRight size={14} className="rotate-180" /> Back
-            </button>
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-black text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">Gmail Sell Option</span>
+            </div>
 
-            <h2 className="text-lg font-bold text-stone-800 tracking-tight">জিমেইল sell করে বোনাস ইনকাম</h2>
+            {/* Top Announcement notice */}
+            <div className="bg-[#ea4335] text-white font-black text-[10.5px] py-1.5 px-3 rounded-xl text-center shadow-2xs select-none leading-relaxed flex items-center justify-center gap-1.5">
+              <span>📢 আপনার জিমেইল আইডি কালেক্ট হওয়ার ১৫-৩০ ঘণ্টা মধ্যে রিপোর্ট & পেমেন্ট পাবেন, ইনশাআল্লাহ।</span>
+            </div>
 
-            <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
+            {/* Tutorial Badge button resembling screenshot */}
+            <div className="flex justify-center mt-1">
+              <a 
+                href={globalSettings.gmailTutorialUrl || "#"} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (!globalSettings.gmailTutorialUrl) {
+                    e.preventDefault();
+                    triggerToast('⚠️ দুঃখিত, এখনও কোনো টিউটোরিয়াল ভিডিও যুক্ত করা হয়নি!', 'error');
+                  }
+                }}
+                className="bg-[#ea4335]/15 border border-[#ea4335]/25 px-5 py-2 rounded-full flex items-center gap-2 shadow-2xs cursor-pointer hover:bg-[#ea4335]/20 transition-all font-sans"
+              >
+                <img src="https://img.icons8.com/color/48/gmail-new.png" className="w-5 h-5 shrink-0" alt="gmail icon" />
+                <span className="text-[10px] text-[#ea4335] font-black">জিআইএমইএল সেল টিউটোরিয়াল!</span>
+                <div className="bg-red-600 p-1 rounded-full text-white flex items-center justify-center w-4 h-4 shadow-sm animate-pulse">
+                  <Play size={8} className="fill-white text-white translate-x-[0.5px]" />
+                </div>
+              </a>
+            </div>
+
+            <div className="space-y-4">
               {globalSettings.gmailMaintenanceEnabled ? (
-                <div className="text-center py-6 flex flex-col items-center space-y-3">
+                <div className="bg-white border border-stone-200 p-8 rounded-[28px] text-center py-6 flex flex-col items-center space-y-3 shadow-xs">
                   <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
                     <AlertOctagon size={24} />
                   </div>
@@ -4179,100 +4746,149 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 </div>
               ) : (
                 <>
-                  <div className="text-center py-2 flex flex-col items-center">
-                    <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-3 shadow-sm font-bold text-lg">
-                      G
-                    </div>
-                    <h4 className="font-extrabold text-stone-800 text-sm">জিমেইল একাউন্ট বিক্রি করুন</h4>
-                    <p className="text-stone-500 text-xs mt-1 leading-relaxed">
-                      নিচে পাসওয়ার্ড দিয়ে আমাদের সিস্টেমে একাউন্ট ক্রিয়েট করে জমা দিন। প্রতি ভেরিফাইড ইমেইলের জন্য আপনি সাথে সাথে পাবেন:
-                    </p>
-                    <span className="mt-2 inline-block bg-red-50 text-red-650 font-black text-base px-4 py-1.5 rounded-full border border-red-100">
-                      ৳{globalSettings.gmailPrice} (প্রতি পিস)
-                    </span>
-                    {globalSettings.gmailLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.gmailLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
-                        <div className="flex items-center gap-1 text-slate-500 font-bold">
-                          <span>🕒 সাবমিট করার শেষ সময়:</span>
-                        </div>
-                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.gmailLastDate)}</span>
-                        <DeadlineCountdown deadlineStr={globalSettings.gmailLastDate} />
+                  {/* Gmail Gradient Card */}
+                  <div className="bg-gradient-to-r from-[#ea4335] to-[#c5221f] text-white p-5 rounded-[24px] relative overflow-hidden text-center shadow-md">
+                    <div className="absolute top-[-30px] left-[-30px] w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+                    <div className="absolute bottom-[-30px] right-[-30px] w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                    
+                    <div className="flex justify-center mb-1">
+                      <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center shadow-inner">
+                        <Mail size={20} className="text-white" />
                       </div>
-                    )}
+                    </div>
+                    <h3 className="font-extrabold text-sm tracking-widest flex items-center justify-center gap-1 ml-0.5 uppercase">
+                      <Mail size={13} /> Gmail Sell
+                    </h3>
+                    <p className="text-white/85 text-[10.5px] font-bold mt-1">সহজেই জিমেইল সেল করে টাকা আয় করুন</p>
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/15 text-center">
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Rate</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">৳{(globalSettings.gmailPrice || 16.0).toFixed(2)}</strong>
+                      </div>
+                      <div className="border-x border-white/15">
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Limit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">
+                          {globalSettings.gmailDailyLimit && globalSettings.gmailDailyLimit > 0 ? globalSettings.gmailDailyLimit : 'Unlimit'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Submit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">{submittedCount24h}</strong>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Password credentials to configure */}
+                  {/* Today's Password Section */}
                   {!globalSettings.hideMasterPasswords && (
-                    <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex justify-between items-start text-xs ANONYMOUS_PASS_CARD">
-                      <div>
-                        <span className="text-stone-500 font-semibold">মাস্টার পাসওয়ার্ড:</span>
-                        <div className="font-bold text-stone-800 mt-0.5 text-sm font-mono" id="gmail-open-pass">
-                          {showGmailMasterPass ? (globalSettings.gmailOpenPass || 'Shihab@2025#') : '••••••••••••'}
-                        </div>
-                        <p className="text-[10px] text-amber-700/90 font-bold mt-1">
-                          এই পাসওয়ার্ডটি অ্যাকাউন্ট তৈরি করতে ব্যবহার করুন
-                        </p>
+                    <div className="bg-white border-2 border-stone-150 rounded-[22px] p-4 flex justify-between items-center relative shadow-3xs overflow-hidden">
+                      <div className="text-left">
+                        <span className="text-[10px] text-stone-500 font-extrabold block">Today's Password:</span>
+                        <span className="font-sans font-black text-sm text-[#ea4335] select-all mt-0.5 block tracking-wide">
+                          {globalSettings.gmailOpenPass || 'Shihab@2025#'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <button 
-                          type="button"
-                          onClick={() => setShowGmailMasterPass(!showGmailMasterPass)}
-                          className="bg-white/80 hover:bg-white text-stone-700 p-1.5 rounded-lg border border-stone-200 transition flex items-center justify-center cursor-pointer shadow-2xs"
-                          title={showGmailMasterPass ? "লুকিয়ে রাখুন" : "পাসওয়ার্ড দেখুন"}
-                        >
-                          {showGmailMasterPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleCopy(globalSettings.gmailOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
-                          className="bg-[#764ba2] hover:bg-[#667eea] text-white text-[10px] font-bold py-1.5 px-3.5 rounded-lg shadow-sm transition"
-                        >
-                          কপি
-                        </button>
-                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleCopy(globalSettings.gmailOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
+                        className="bg-[#ea4335] hover:bg-red-800 text-white text-[9.5px] font-black py-2 px-3.5 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Copy size={9} /> Copy Password
+                      </button>
                     </div>
                   )}
 
-                  <form onSubmit={handleGmailSell} className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-700 block pl-1">জিমেইল ইমেইল এড্রেস</label>
-                      <input 
-                        type="email" 
-                        placeholder="example@gmail.com"
-                        value={gmailEmail}
-                        onChange={(e) => setGmailEmail(e.target.value)}
-                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-700 block pl-1">জিমেইল পাসওয়ার্ড</label>
-                      <input 
-                        type="text" 
-                        placeholder="জিমেইলের নিজস্ব পাসওয়ার্ডটি দিন"
-                        value={gmailPassword}
-                        onChange={(e) => setGmailPassword(e.target.value)}
-                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition"
-                        required
-                      />
-                    </div>
-
-                    {gmailMessage.text && (
-                      <div className={`p-4 rounded-2xl text-xs font-bold leading-relaxed flex items-center gap-2 ${gmailMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
-                        {gmailMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                        <span>{gmailMessage.text}</span>
+                  {/* Gmail Sell Form and History Wrapper */}
+                  <div className="bg-white border border-stone-200/80 p-5 rounded-[28px] shadow-sm space-y-4">
+                    <form onSubmit={handleGmailSell} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-stone-700 block pl-1">জিমেইল এড্রেস (Registered Gmail)</label>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-stone-400">
+                            <Mail size={15} />
+                          </span>
+                          <input 
+                            type="email" 
+                            placeholder="example@gmail.com"
+                            value={gmailEmail}
+                            onChange={(e) => setGmailEmail(e.target.value)}
+                            className="w-full bg-stone-50/70 border-2 border-stone-150 focus:border-[#ea4335] focus:bg-white rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold outline-none transition shadow-2xs"
+                            required
+                          />
+                        </div>
                       </div>
-                    )}
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-stone-700 block pl-1">পাসওয়ার্ড (Gmail Password)</label>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-stone-400">
+                            <Lock size={15} />
+                          </span>
+                          <input 
+                            type="text" 
+                            placeholder="আপনার জিমেইল পাসওয়ার্ড লিখুন"
+                            value={gmailPassword}
+                            onChange={(e) => setGmailPassword(e.target.value)}
+                            className="w-full bg-stone-50/70 border-2 border-stone-150 focus:border-[#ea4335] focus:bg-white rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold outline-none transition shadow-2xs"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Warning box */}
+                      <div className="bg-rose-50 border border-rose-150/70 p-3 rounded-2xl text-[10px] text-rose-700 font-semibold flex items-center gap-2">
+                        <AlertCircle size={14} className="text-[#ea4335] shrink-0" />
+                        <span>রিপোর্ট টাইম: ১৫-৩০ ঘণ্টা</span>
+                      </div>
+
+                      {globalSettings.gmailLastDate && (
+                        <div className={`p-3 rounded-2xl border text-[10.5px] font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.gmailLastDate) ? 'bg-red-50 border-red-250 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                          <span className="text-[9.5px] text-slate-500">🕒 সাবমিট করার শেষ সময়:</span>
+                          <span className="font-extrabold text-[11px] leading-none text-slate-800">{formatDeadline(globalSettings.gmailLastDate)}</span>
+                          <DeadlineCountdown deadlineStr={globalSettings.gmailLastDate} />
+                        </div>
+                      )}
+
+                      {gmailMessage.text && (
+                        <div className={`p-3.5 rounded-2xl text-[10px] font-bold leading-relaxed flex items-center gap-2 ${gmailMessage.type === 'success' ? 'bg-emerald-50 text-emerald-850 border border-emerald-200' : 'bg-rose-50 text-rose-800'}`}>
+                          {gmailMessage.type === 'success' ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
+                          <span>{gmailMessage.text}</span>
+                        </div>
+                      )}
+
+                      {/* Admin Guidelines / Custom Texts */}
+                      {socialTexts.filter(t => t.platform === 'gmail').length > 0 && (
+                        <div className="bg-stone-50 border border-stone-150 rounded-2xl p-4 space-y-2 text-left">
+                          <h5 className="font-extrabold text-stone-850 text-xs flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-[#ea4335] rounded-full"></span>
+                            বিশেষ নির্দেশাবলী:
+                          </h5>
+                          <ul className="list-disc pl-4 text-stone-600 text-[11px] space-y-1 font-semibold leading-relaxed">
+                            {socialTexts.filter(t => t.platform === 'gmail').map(t => (
+                              <li key={t.id}>{t.text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={isSubmittingGmail}
+                        className="w-full bg-[#ea4335] hover:bg-[#c5221f] text-white font-extrabold py-3.5 rounded-2xl shadow-md transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer text-xs uppercase"
+                      >
+                        {isSubmittingGmail ? 'জমা হচ্ছে...' : 'Submit Gmail Account'}
+                      </button>
+                    </form>
 
                     <button 
-                      type="submit"
-                      disabled={isSubmittingGmail}
-                      className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white font-bold py-4 rounded-2xl shadow-lg transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer"
+                      type="button"
+                      onClick={() => handleFetchHistory('gmail')}
+                      className="w-full bg-white hover:bg-stone-50 text-stone-700 border-2 border-stone-150 font-bold py-3 rounded-2xl shadow-2xs transition flex items-center justify-center gap-1.5 text-xs font-sans cursor-pointer"
                     >
-                      {isSubmittingGmail ? 'জমা হচ্ছে...' : 'বিক্রি করতে জমা দিন ✔'}
+                      <History size={13} />
+                      <span>Gmail Sell History (লগ)</span>
                     </button>
-                  </form>
+                  </div>
                 </>
               )}
             </div>
@@ -4282,15 +4898,38 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         {/* VIEW: TELEGRAM SELL */}
         {activeTab === 'telegram-sell' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-300 bg-white hover:bg-stone-50 font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs">
-              <ChevronRight size={14} className="rotate-180" /> Back
-            </button>
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">Telegram Sell Option</span>
+            </div>
 
-            <h2 className="text-lg font-bold text-stone-800 tracking-tight">টেলিগ্রাম নাম্বার sell করে বোনাস ইনকাম</h2>
+            {/* Tutorial Badge button resembling screenshot */}
+            <div className="flex justify-center mt-1">
+              <a 
+                href={globalSettings.telegramTutorialUrl || "#"} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (!globalSettings.telegramTutorialUrl) {
+                    e.preventDefault();
+                    triggerToast('⚠️ দুঃখিত, এখনও কোনো টিউটোরিয়াল ভিডিও যুক্ত করা হয়নি!', 'error');
+                  }
+                }}
+                className="bg-[#0088cc]/15 border border-[#0088cc]/25 px-5 py-2 rounded-full flex items-center gap-2 shadow-3xs cursor-pointer hover:bg-[#0088cc]/20 transition-all font-sans"
+              >
+                <img src="https://img.icons8.com/color/48/telegram-app.png" className="w-5 h-5 shrink-0" alt="telegram icon" />
+                <span className="text-[10px] text-[#0088cc] font-black">টেলিগ্রাম সেল টিউটোরিয়াল!</span>
+                <div className="bg-[#0088cc] p-1 rounded-full text-white flex items-center justify-center w-4 h-4 shadow-sm animate-pulse">
+                  <Play size={8} className="fill-white text-white translate-x-[0.5px]" />
+                </div>
+              </a>
+            </div>
 
-            <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
+            <div className="space-y-4">
               {globalSettings.telegramMaintenanceEnabled ? (
-                <div className="text-center py-6 flex flex-col items-center space-y-3">
+                <div className="bg-white border border-stone-200 p-8 rounded-[28px] text-center py-6 flex flex-col items-center space-y-3 shadow-xs">
                   <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
                     <AlertOctagon size={24} />
                   </div>
@@ -4301,132 +4940,192 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 </div>
               ) : (
                 <>
-                  <div className="text-center py-2 flex flex-col items-center">
-                    <div className="w-14 h-14 bg-sky-50 text-sky-500 rounded-full flex items-center justify-center mb-3 shadow-sm font-bold text-lg">
-                      T
-                    </div>
-                    <h4 className="font-extrabold text-stone-800 text-sm">টেলিগ্রাম নাম্বার বিক্রি করুন</h4>
-                    <p className="text-stone-500 text-xs mt-1 leading-relaxed">
-                      আপনার সচল টেলিগ্রাম নাম্বারটি নিচে দিন। এডমিন ভেরিফাই করে সফল হলে সাথে সাথে ব্যালেন্স যোগ হবে:
-                    </p>
-                    <span className="mt-2 inline-block bg-sky-50 text-sky-655 font-black text-base px-4 py-1.5 rounded-full border border-sky-100">
-                      ৳{globalSettings.telegramPrice || 20} (প্রতি পিস)
-                    </span>
-                    {globalSettings.telegramLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.telegramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
-                        <div className="flex items-center gap-1 text-slate-500 font-bold">
-                          <span>🕒 সাবমিট করার শেষ সময়:</span>
-                        </div>
-                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.telegramLastDate)}</span>
-                        <DeadlineCountdown deadlineStr={globalSettings.telegramLastDate} />
+                  {/* Telegram Gradient Card */}
+                  <div className="bg-gradient-to-r from-[#0088cc] to-[#229ed9] text-white p-5 rounded-[24px] relative overflow-hidden text-center shadow-md">
+                    <div className="absolute top-[-30px] left-[-30px] w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+                    <div className="absolute bottom-[-30px] right-[-30px] w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                    
+                    <div className="flex justify-center mb-1">
+                      <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center shadow-inner">
+                        <Send size={20} className="text-white rotate-45 -translate-x-[1px] translate-y-[1px]" />
                       </div>
-                    )}
+                    </div>
+                    <h3 className="font-extrabold text-sm tracking-widest flex items-center justify-center gap-1 ml-0.5 uppercase">
+                      Telegram Sell
+                    </h3>
+                    <p className="text-white/85 text-[10.5px] font-bold mt-1">টেলিগ্রাম নাম্বার বিক্রি করে সহজে আয় করুন</p>
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/15 text-center">
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Rate</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">৳{(globalSettings.telegramPrice || 20.0).toFixed(2)}</strong>
+                      </div>
+                      <div className="border-x border-white/15">
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Limit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">
+                          {globalSettings.telegramDailyLimit && globalSettings.telegramDailyLimit > 0 ? globalSettings.telegramDailyLimit : 'Unlimit'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Submit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">{submittedCount24h}</strong>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Password credentials to configure */}
+                  {/* Today's Password Section */}
                   {!globalSettings.hideMasterPasswords && (
-                    <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex justify-between items-start text-xs ANONYMOUS_PASS_CARD">
-                      <div>
-                        <span className="text-stone-500 font-semibold">মাস্টার পাসওয়ার্ড:</span>
-                        <div className="font-bold text-stone-800 mt-0.5 text-sm font-mono" id="telegram-open-pass">
-                          {showTelegramMasterPass ? (globalSettings.telegramOpenPass || 'Shihab@2025#') : '••••••••••••'}
-                        </div>
-                        <p className="text-[10px] text-amber-700/90 font-bold mt-1">
-                          এই পাসওয়ার্ডটি অ্যাকাউন্ট তৈরি করতে ব্যবহার করুন
-                        </p>
+                    <div className="bg-white border-2 border-stone-150 rounded-[22px] p-4 flex justify-between items-center relative shadow-3xs overflow-hidden">
+                      <div className="text-left">
+                        <span className="text-[10px] text-stone-500 font-extrabold block">Today's Password:</span>
+                        <span className="font-sans font-black text-sm text-[#0088cc] select-all mt-0.5 block tracking-wide">
+                          {globalSettings.telegramOpenPass || 'Shihab@2025#'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <button 
-                          type="button"
-                          onClick={() => setShowTelegramMasterPass(!showTelegramMasterPass)}
-                          className="bg-white/80 hover:bg-white text-stone-700 p-1.5 rounded-lg border border-stone-200 transition flex items-center justify-center cursor-pointer shadow-2xs"
-                          title={showTelegramMasterPass ? "লুকিয়ে রাখুন" : "পাসওয়ার্ড দেখুন"}
-                        >
-                          {showTelegramMasterPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleCopy(globalSettings.telegramOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
-                          className="bg-[#764ba2] hover:bg-[#667eea] text-white text-[10px] font-bold py-1.5 px-3.5 rounded-lg shadow-sm transition"
-                        >
-                          কপি
-                        </button>
-                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleCopy(globalSettings.telegramOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
+                        className="bg-[#0088cc] hover:bg-[#0077b5] text-white text-[9.5px] font-black py-2 px-3.5 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Copy size={9} /> Copy Password
+                      </button>
                     </div>
                   )}
 
-                  <form onSubmit={handleTelegramSell} className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-700 block pl-1">টেলিগ্রাম ফোন নাম্বার (+৮৮০ সহ)</label>
-                      <input 
-                        type="tel" 
-                        placeholder="+88017XXXXXXXX"
-                        value={telegramNumber}
-                        onChange={(e) => setTelegramNumber(e.target.value)}
-                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-700 block pl-1">অতিরিক্ত তথ্য / ২-ফ্যাক্টর কোড / পাসওয়ার্ড (যদি থাকে)</label>
-                      <textarea 
-                        placeholder="পাসওয়ার্ড বা ওটিপি/টোকেন সংক্রান্ত বিশেষ কোনো নির্দেশ থাকলে এখানে লিখুন (বিকল্প)"
-                        value={telegramDetails}
-                        onChange={(e) => setTelegramDetails(e.target.value)}
-                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition resize-none font-medium leading-relaxed"
-                        rows={3}
-                      />
-                    </div>
-
-                    {telegramMessage.text && (
-                      <div className={`p-4 rounded-2xl text-xs font-bold leading-relaxed flex items-center gap-2 ${telegramMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
-                        {telegramMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                        <span>{telegramMessage.text}</span>
+                  {/* Telegram Sell Form and History Wrapper */}
+                  <div className="bg-white border border-stone-200/80 p-5 rounded-[28px] shadow-sm space-y-4">
+                    <form onSubmit={handleTelegramSell} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-stone-700 block pl-1">টেলিগ্রাম ফোন নাম্বার (+৮৮০ সহ)</label>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-stone-400">
+                            <Phone size={15} />
+                          </span>
+                          <input 
+                            type="tel" 
+                            placeholder="+88017XXXXXXXX"
+                            value={telegramNumber}
+                            onChange={(e) => setTelegramNumber(e.target.value)}
+                            className="w-full bg-stone-50/70 border-2 border-stone-150 focus:border-[#0088cc] focus:bg-white rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold outline-none transition shadow-2xs"
+                            required
+                          />
+                        </div>
                       </div>
-                    )}
 
-                    {/* Admin Guidelines / Custom Texts */}
-                    {socialTexts.filter(t => t.platform === 'telegram').length > 0 && (
-                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-2 mt-4 text-left">
-                        <h5 className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 bg-sky-600 rounded-full"></span>
-                          এডমিন নির্দেশাবলী (Admin Guidelines)
-                        </h5>
-                        <ul className="list-disc pl-4 text-stone-600 text-xs space-y-1 font-medium leading-relaxed">
-                          {socialTexts.filter(t => t.platform === 'telegram').map(t => (
-                            <li key={t.id}>{t.text}</li>
-                          ))}
-                        </ul>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-stone-700 block pl-1">অতিরিক্ত তথ্য / ২FA / পাসওয়ার্ড</label>
+                        <div className="relative flex items-start">
+                          <textarea 
+                            placeholder="অ্যাকাউন্টের ২-ফ্যাক্টর পাসওয়ার্ড বা অতিরিক্ত নির্দেশাবলী এখানে লিখুন (বিকল্প)"
+                            value={telegramDetails}
+                            onChange={(e) => setTelegramDetails(e.target.value)}
+                            className="w-full bg-stone-50/70 border-2 border-stone-150 focus:border-[#0088cc] focus:bg-white rounded-2xl p-4 text-xs font-bold outline-none transition shadow-2xs resize-none"
+                            rows={3}
+                          />
+                        </div>
                       </div>
-                    )}
+
+                      {/* Warning box */}
+                      <div className="bg-rose-50 border border-rose-150/70 p-3 rounded-2xl text-[10px] text-rose-700 font-black flex items-center gap-2">
+                        <AlertCircle size={14} className="text-[#0088cc] shrink-0" />
+                        <span>রিপোর্ট টাইম: ১৫-৩০ ঘণ্টা</span>
+                      </div>
+
+                      {globalSettings.telegramLastDate && (
+                        <div className={`p-3 rounded-2xl border text-[10.5px] font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.telegramLastDate) ? 'bg-red-50 border-red-250 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                          <span className="text-[9px] text-slate-500">🕒 সাবমিট করার শেষ সময়:</span>
+                          <span className="font-extrabold text-[11px] leading-none text-slate-800">{formatDeadline(globalSettings.telegramLastDate)}</span>
+                          <DeadlineCountdown deadlineStr={globalSettings.telegramLastDate} />
+                        </div>
+                      )}
+
+                      {telegramMessage.text && (
+                        <div className={`p-3.5 rounded-2xl text-[10px] font-bold leading-relaxed flex items-center gap-2 ${telegramMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800'}`}>
+                          {telegramMessage.type === 'success' ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
+                          <span>{telegramMessage.text}</span>
+                        </div>
+                      )}
+
+                      {/* Admin Guidelines / Custom Texts */}
+                      {socialTexts.filter(t => t.platform === 'telegram').length > 0 && (
+                        <div className="bg-stone-50 border border-stone-150 rounded-2xl p-4 space-y-2 text-left">
+                          <h5 className="font-extrabold text-stone-850 text-xs flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-[#0088cc] rounded-full"></span>
+                            বিশেষ নির্দেশাবলী:
+                          </h5>
+                          <ul className="list-disc pl-4 text-stone-600 text-[11px] space-y-1 font-semibold leading-relaxed">
+                            {socialTexts.filter(t => t.platform === 'telegram').map(t => (
+                              <li key={t.id}>{t.text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={isSubmittingTelegram}
+                        className="w-full bg-[#0088cc] hover:bg-[#0077b5] text-white font-extrabold py-3.5 rounded-2xl shadow-md transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer text-xs uppercase"
+                      >
+                        {isSubmittingTelegram ? 'জমা হচ্ছে...' : 'Submit Telegram Account'}
+                      </button>
+                    </form>
 
                     <button 
-                      type="submit"
-                      disabled={isSubmittingTelegram}
-                      className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-4 rounded-2xl shadow-lg transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer text-sm"
+                      type="button"
+                      onClick={() => handleFetchHistory('telegram')}
+                      className="w-full bg-white hover:bg-stone-50 text-stone-700 border-2 border-stone-150 font-bold py-3 rounded-2xl shadow-2xs transition flex items-center justify-center gap-1.5 text-xs font-sans cursor-pointer"
                     >
-                      {isSubmittingTelegram ? 'জমা হচ্ছে...' : 'বিক্রি করতে জমা দিন ✔'}
+                      <History size={13} />
+                      <span>Telegram Sell History (লগ)</span>
                     </button>
-                  </form>
+                  </div>
                 </>
               )}
             </div>
           </motion.div>
         )}
 
+        {/* VIEW: WHATSAPP SELL JUNK */}
+        {activeTab === 'whatsapp-sell-junk' && (
+          <div className="hidden">
+          </div>
+        )}
+
         {/* VIEW: WHATSAPP SELL */}
         {activeTab === 'whatsapp-sell' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-300 bg-white hover:bg-stone-50 font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs">
-              <ChevronRight size={14} className="rotate-180" /> Back
-            </button>
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">WhatsApp Sell Option</span>
+            </div>
 
-            <h2 className="text-lg font-bold text-stone-800 tracking-tight">হোয়াটসঅ্যাপ নাম্বার sell করে বোনাস ইনকাম</h2>
+            {/* Tutorial Badge button resembling screenshot */}
+            <div className="flex justify-center mt-1">
+              <a 
+                href={globalSettings.whatsappTutorialUrl || "#"} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (!globalSettings.whatsappTutorialUrl) {
+                    e.preventDefault();
+                    triggerToast('⚠️ দুঃখিত, এখনও কোনো টিউটোরিয়াল ভিডিও যুক্ত করা হয়নি!', 'error');
+                  }
+                }}
+                className="bg-[#25D366]/15 border border-[#25D366]/25 px-5 py-2 rounded-full flex items-center gap-2 shadow-3xs cursor-pointer hover:bg-[#25D366]/20 transition-all font-sans"
+              >
+                <img src="https://img.icons8.com/color/48/whatsapp.png" className="w-5 h-5 shrink-0" alt="whatsapp icon" />
+                <span className="text-[10px] text-[#128C7E] font-black">হোয়াটসঅ্যাপ সেল টিউটোরিয়াল!</span>
+                <div className="bg-[#25D366] p-1 rounded-full text-white flex items-center justify-center w-4 h-4 shadow-sm animate-pulse">
+                  <Play size={8} className="fill-white text-white translate-x-[0.5px]" />
+                </div>
+              </a>
+            </div>
 
-            <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
+            <div className="space-y-4">
               {globalSettings.whatsappMaintenanceEnabled ? (
-                <div className="text-center py-6 flex flex-col items-center space-y-3">
+                <div className="bg-white border border-stone-200 p-8 rounded-[28px] text-center py-6 flex flex-col items-center space-y-3 shadow-xs">
                   <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
                     <AlertOctagon size={24} />
                   </div>
@@ -4437,114 +5136,145 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 </div>
               ) : (
                 <>
-                  <div className="text-center py-2 flex flex-col items-center">
-                    <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-3 shadow-sm font-bold text-lg">
-                      W
-                    </div>
-                    <h4 className="font-extrabold text-stone-800 text-sm">হোয়াটসঅ্যাপ নাম্বার বিক্রি করুন</h4>
-                    <p className="text-stone-500 text-xs mt-1 leading-relaxed">
-                      আপনার হোয়াটসঅ্যাপ নাম্বারটি নিজে ভেরিফাই করে জমা দিন। প্রতি সচল হোয়াটসঅ্যাপের জন্য আপনি পাবেন:
-                    </p>
-                    <span className="mt-2 inline-block bg-emerald-50 text-emerald-650 font-black text-base px-4 py-1.5 rounded-full border border-emerald-100">
-                      ৳{globalSettings.whatsappPrice || 30} (প্রতি পিস)
-                    </span>
-                    {globalSettings.whatsappLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.whatsappLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
-                        <div className="flex items-center gap-1 text-slate-500 font-bold">
-                          <span>🕒 সাবমিট করার শেষ সময়:</span>
-                        </div>
-                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.whatsappLastDate)}</span>
-                        <DeadlineCountdown deadlineStr={globalSettings.whatsappLastDate} />
+                  {/* WhatsApp Gradient Card */}
+                  <div className="bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white p-5 rounded-[24px] relative overflow-hidden text-center shadow-md">
+                    <div className="absolute top-[-30px] left-[-30px] w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+                    <div className="absolute bottom-[-30px] right-[-30px] w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                    
+                    <div className="flex justify-center mb-1">
+                      <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center shadow-inner">
+                        <MessageSquare size={20} className="text-white" />
                       </div>
-                    )}
+                    </div>
+                    <h3 className="font-extrabold text-sm tracking-widest flex items-center justify-center gap-1 ml-0.5 uppercase">
+                      WhatsApp Sell
+                    </h3>
+                    <p className="text-white/85 text-[10.5px] font-bold mt-1">হোয়াটসঅ্যাপ নাম্বার বিক্রি করে সহজে আয় করুন</p>
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/15 text-center">
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Rate</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">৳{(globalSettings.whatsappPrice || 35.0).toFixed(2)}</strong>
+                      </div>
+                      <div className="border-x border-white/15">
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Limit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">
+                          {globalSettings.whatsappDailyLimit && globalSettings.whatsappDailyLimit > 0 ? globalSettings.whatsappDailyLimit : 'Unlimit'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Submit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">{submittedCount24h}</strong>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Password credentials to configure */}
+                  {/* Today's Password Section */}
                   {!globalSettings.hideMasterPasswords && (
-                    <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex justify-between items-start text-xs ANONYMOUS_PASS_CARD">
-                      <div>
-                        <span className="text-stone-500 font-semibold">মাস্টার পাসওয়ার্ড:</span>
-                        <div className="font-bold text-stone-800 mt-0.5 text-sm font-mono" id="whatsapp-open-pass">
-                          {showWhatsappMasterPass ? (globalSettings.whatsappOpenPass || 'Shihab@2025#') : '••••••••••••'}
-                        </div>
-                        <p className="text-[10px] text-amber-700/90 font-bold mt-1">
-                          এই পাসওয়ার্ডটি অ্যাকাউন্ট তৈরি করতে ব্যবহার করুন
-                        </p>
+                    <div className="bg-white border-2 border-stone-150 rounded-[22px] p-4 flex justify-between items-center relative shadow-3xs overflow-hidden">
+                      <div className="text-left">
+                        <span className="text-[10px] text-stone-500 font-extrabold block">Today's Password:</span>
+                        <span className="font-sans font-black text-sm text-[#128C7E] select-all mt-0.5 block tracking-wide">
+                          {globalSettings.whatsappOpenPass || 'Shihab@2025#'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <button 
-                          type="button"
-                          onClick={() => setShowWhatsappMasterPass(!showWhatsappMasterPass)}
-                          className="bg-white/80 hover:bg-white text-stone-700 p-1.5 rounded-lg border border-stone-200 transition flex items-center justify-center cursor-pointer shadow-2xs"
-                          title={showWhatsappMasterPass ? "লুকিয়ে রাখুন" : "পাসওয়ার্ড দেখুন"}
-                        >
-                          {showWhatsappMasterPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleCopy(globalSettings.whatsappOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
-                          className="bg-[#764ba2] hover:bg-[#667eea] text-white text-[10px] font-bold py-1.5 px-3.5 rounded-lg shadow-sm transition"
-                        >
-                          কপি
-                        </button>
-                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleCopy(globalSettings.whatsappOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
+                        className="bg-[#2a9d8f] hover:bg-[#128c7e] text-white text-[9.5px] font-black py-2 px-3.5 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Copy size={9} /> Copy Password
+                      </button>
                     </div>
                   )}
 
-                  <form onSubmit={handleWhatsappSell} className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-700 block pl-1">হোয়াটসঅ্যাপ ফোন নাম্বার (+৮৮০ সহ)</label>
-                      <input 
-                        type="tel" 
-                        placeholder="+88017XXXXXXXX"
-                        value={whatsappNumber}
-                        onChange={(e) => setWhatsappNumber(e.target.value)}
-                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-700 block pl-1">২-ফ্যাক্টর পিন / অতিরিক্ত তথ্য</label>
-                      <textarea 
-                        placeholder="আপনার অ্যাকাউন্টের ২-ফ্যাক্টর পিন বা টু-স্টেপ ভেরিফিকেশন পিন থাকলে এখানে অবশ্যই লিখে দিন (অপশনাল)"
-                        value={whatsappDetails}
-                        onChange={(e) => setWhatsappDetails(e.target.value)}
-                        className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition resize-none font-medium leading-relaxed"
-                        rows={3}
-                      />
-                    </div>
-
-                    {whatsappMessage.text && (
-                      <div className={`p-4 rounded-2xl text-xs font-bold leading-relaxed flex items-center gap-2 ${whatsappMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
-                        {whatsappMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                        <span>{whatsappMessage.text}</span>
+                  {/* WhatsApp Sell Form and History Wrapper */}
+                  <div className="bg-white border border-stone-200/80 p-5 rounded-[28px] shadow-sm space-y-4">
+                    <form onSubmit={handleWhatsappSell} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-stone-700 block pl-1">হোয়াটসঅ্যাপ ফোন নাম্বার (+৮৮০ সহ)</label>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-stone-400">
+                            <Phone size={15} />
+                          </span>
+                          <input 
+                            type="tel" 
+                            placeholder="+88017XXXXXXXX"
+                            value={whatsappNumber}
+                            onChange={(e) => setWhatsappNumber(e.target.value)}
+                            className="w-full bg-stone-50/70 border-2 border-stone-150 focus:border-[#128C7E] focus:bg-white rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold outline-none transition shadow-2xs"
+                            required
+                          />
+                        </div>
                       </div>
-                    )}
 
-                    {/* Admin Guidelines / Custom Texts */}
-                    {socialTexts.filter(t => t.platform === 'whatsapp').length > 0 && (
-                      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-2 mt-4 text-left">
-                        <h5 className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></span>
-                          এডমিন নির্দেশাবলী (Admin Guidelines)
-                        </h5>
-                        <ul className="list-disc pl-4 text-stone-600 text-xs space-y-1 font-medium leading-relaxed">
-                          {socialTexts.filter(t => t.platform === 'whatsapp').map(t => (
-                            <li key={t.id}>{t.text}</li>
-                          ))}
-                        </ul>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-stone-700 block pl-1">অেরিরিক্ত তথ্য / ২FA / পাসওয়ার্ড</label>
+                        <div className="relative flex items-start">
+                          <textarea 
+                            placeholder="অ্যাকাউন্টের ২-ফ্যাক্টর পাসওয়ার্ড বা অতিরিক্ত নির্দেশাবলী এখানে লিখুন (বিকল্প)"
+                            value={whatsappDetails}
+                            onChange={(e) => setWhatsappDetails(e.target.value)}
+                            className="w-full bg-stone-50/70 border-2 border-stone-150 focus:border-[#128C7E] focus:bg-white rounded-2xl p-4 text-xs font-bold outline-none transition shadow-2xs resize-none"
+                            rows={3}
+                          />
+                        </div>
                       </div>
-                    )}
+
+                      {/* Warning box */}
+                      <div className="bg-rose-50 border border-rose-150/70 p-3 rounded-2xl text-[10px] text-rose-700 font-black flex items-center gap-2">
+                        <AlertCircle size={14} className="text-[#128C7E] shrink-0" />
+                        <span>রিপোর্ট টাইম: ১৫-৩০ ঘণ্টা</span>
+                      </div>
+
+                      {globalSettings.whatsappLastDate && (
+                        <div className={`p-3 rounded-2xl border text-[10.5px] font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.whatsappLastDate) ? 'bg-red-50 border-red-250 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                          <span className="text-[9px] text-slate-500">🕒 সাবমিট করার শেষ সময়:</span>
+                          <span className="font-extrabold text-[11px] leading-none text-slate-800">{formatDeadline(globalSettings.whatsappLastDate)}</span>
+                          <DeadlineCountdown deadlineStr={globalSettings.whatsappLastDate} />
+                        </div>
+                      )}
+
+                      {whatsappMessage.text && (
+                        <div className={`p-3.5 rounded-2xl text-[10px] font-bold leading-relaxed flex items-center gap-2 ${whatsappMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800'}`}>
+                          {whatsappMessage.type === 'success' ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
+                          <span>{whatsappMessage.text}</span>
+                        </div>
+                      )}
+
+                      {/* Admin Guidelines / Custom Texts */}
+                      {socialTexts.filter(t => t.platform === 'whatsapp').length > 0 && (
+                        <div className="bg-stone-50 border border-stone-150 rounded-2xl p-4 space-y-2 text-left">
+                          <h5 className="font-extrabold text-stone-850 text-xs flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-[#128C7E] rounded-full"></span>
+                            বিশেষ নির্দেশাবলী:
+                          </h5>
+                          <ul className="list-disc pl-4 text-stone-600 text-[11px] space-y-1 font-semibold leading-relaxed">
+                            {socialTexts.filter(t => t.platform === 'whatsapp').map(t => (
+                              <li key={t.id}>{t.text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={isSubmittingWhatsapp}
+                        className="w-full bg-[#128C7E] hover:bg-[#0f7367] text-white font-extrabold py-3.5 rounded-2xl shadow-md transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer text-xs uppercase"
+                      >
+                        {isSubmittingWhatsapp ? 'জমা হচ্ছে...' : 'Submit WhatsApp Account'}
+                      </button>
+                    </form>
 
                     <button 
-                      type="submit"
-                      disabled={isSubmittingWhatsapp}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-lg transition disabled:opacity-55 flex items-center justify-center gap-2 cursor-pointer text-sm"
+                      type="button"
+                      onClick={() => handleFetchHistory('whatsapp')}
+                      className="w-full bg-white hover:bg-stone-50 text-stone-700 border-2 border-stone-150 font-bold py-3 rounded-2xl shadow-2xs transition flex items-center justify-center gap-1.5 text-xs font-sans cursor-pointer"
                     >
-                      {isSubmittingWhatsapp ? 'জমা হচ্ছে...' : 'বিক্রি করতে জমা দিন ✔'}
+                      <History size={13} />
+                      <span>WhatsApp Sell History (লগ)</span>
                     </button>
-                  </form>
+                  </div>
                 </>
               )}
             </div>
@@ -4554,15 +5284,38 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         {/* VIEW: FACEBOOK SELL */}
         {activeTab === 'facebook-sell' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-300 bg-white hover:bg-stone-50 font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs">
-              <ChevronRight size={14} className="rotate-180" /> Back
-            </button>
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">Facebook Sell Option</span>
+            </div>
 
-            <h2 className="text-lg font-bold text-stone-800 tracking-tight">ফেসবুক আইডি sell করে বোনাস ইনকাম</h2>
+            {/* Tutorial Badge button resembling screenshot */}
+            <div className="flex justify-center mt-1">
+              <a 
+                href={globalSettings.facebookTutorialUrl || "#"} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (!globalSettings.facebookTutorialUrl) {
+                    e.preventDefault();
+                    triggerToast('⚠️ দুঃখিত, এখনও কোনো টিউটোরিয়াল ভিডিও যুক্ত করা হয়নি!', 'error');
+                  }
+                }}
+                className="bg-[#1877F2]/15 border border-[#1877F2]/25 px-5 py-2 rounded-full flex items-center gap-2 shadow-2xs cursor-pointer hover:bg-[#1877F2]/20 transition-all"
+              >
+                <img src="https://img.icons8.com/color/48/facebook-new.png" className="w-5 h-5 shrink-0" alt="facebook icon" />
+                <span className="text-[10px] text-[#1877F2] font-black">ফেসবুক সেল টিউটোরিয়াল!</span>
+                <div className="bg-[#1877F2] p-1 rounded-full text-white flex items-center justify-center w-4 h-4 shadow-sm animate-pulse">
+                  <Play size={8} className="fill-white text-white translate-x-[0.5px]" />
+                </div>
+              </a>
+            </div>
 
-            <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
+            <div className="space-y-4">
               {globalSettings.facebookMaintenanceEnabled ? (
-                <div className="text-center py-6 flex flex-col items-center space-y-3">
+                <div className="bg-white border border-stone-200 p-8 rounded-[28px] text-center py-6 flex flex-col items-center space-y-3 shadow-xs">
                   <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
                     <AlertOctagon size={24} />
                   </div>
@@ -4573,61 +5326,60 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 </div>
               ) : (
                 <>
-                  <div className="text-center py-2 flex flex-col items-center">
-                    <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-3 shadow-sm font-bold text-lg">
-                      F
-                    </div>
-                    <h4 className="font-extrabold text-stone-800 text-sm">পুরাতন ফেসবুক একাউন্ট বিক্রি করুন</h4>
-                    <p className="text-stone-500 text-xs mt-1 leading-relaxed">
-                      নিচে সমস্ত সঠিক লগইন ক্রেডেনশিয়াল প্রদান করে জমা দিন। এডমিনের ভেরিফিকেশনের পর আপনি পাবেন:
-                    </p>
-                    <span className="mt-2 inline-block bg-indigo-50 text-indigo-650 font-black text-base px-4 py-1.5 rounded-full border border-indigo-100">
-                      ৳{globalSettings.facebookPrice || 25} (প্রতি পিস)
-                    </span>
-                    {globalSettings.facebookLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.facebookLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
-                        <div className="flex items-center gap-1 text-slate-500 font-bold">
-                          <span>🕒 সাবমিট করার শেষ সময়:</span>
-                        </div>
-                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.facebookLastDate)}</span>
-                        <DeadlineCountdown deadlineStr={globalSettings.facebookLastDate} />
+                  {/* Facebook Gradient Card */}
+                  <div className="bg-gradient-to-r from-[#1877F2] to-[#3b5998] text-white p-5 rounded-[24px] relative overflow-hidden text-center shadow-md">
+                    <div className="absolute top-[-30px] left-[-30px] w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+                    <div className="absolute bottom-[-30px] right-[-30px] w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                    
+                    <div className="flex justify-center mb-1">
+                      <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center shadow-inner font-sans font-black text-xl">
+                        F
                       </div>
-                    )}
+                    </div>
+                    <h3 className="font-extrabold text-sm tracking-widest flex items-center justify-center gap-1 ml-0.5 uppercase">
+                      Facebook Sell
+                    </h3>
+                    <p className="text-white/85 text-[10.5px] font-bold mt-1">ফেসবুক একাউন্ট বিক্রি করে সহজে আয় করুন</p>
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/15 text-center">
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Rate</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">৳{(globalSettings.facebookPrice || 25.0).toFixed(2)}</strong>
+                      </div>
+                      <div className="border-x border-white/15">
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Limit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">
+                          {globalSettings.facebookDailyLimit && globalSettings.facebookDailyLimit > 0 ? globalSettings.facebookDailyLimit : 'Unlimit'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Submit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">{submittedCount24h}</strong>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Password credentials to configure */}
+                  {/* Today's Password Section */}
                   {!globalSettings.hideMasterPasswords && (
-                    <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex justify-between items-start text-xs ANONYMOUS_PASS_CARD">
-                      <div>
-                        <span className="text-stone-500 font-semibold">মাস্টার পাসওয়ার্ড:</span>
-                        <div className="font-bold text-stone-800 mt-0.5 text-sm font-mono" id="facebook-open-pass">
-                          {showFacebookMasterPass ? (globalSettings.facebookOpenPass || 'Shihab@2025#') : '••••••••••••'}
-                        </div>
-                        <p className="text-[10px] text-amber-700/90 font-bold mt-1">
-                          এই পাসওয়ার্ডটি অ্যাকাউন্ট তৈরি করতে ব্যবহার করুন
-                        </p>
+                    <div className="bg-white border-2 border-stone-150 rounded-[22px] p-4 flex justify-between items-center relative shadow-3xs overflow-hidden">
+                      <div className="text-left">
+                        <span className="text-[10px] text-stone-500 font-extrabold block">Today's Password:</span>
+                        <span className="font-sans font-black text-sm text-[#1877F2] select-all mt-0.5 block tracking-wide">
+                          {globalSettings.facebookOpenPass || 'Shihab@2025#'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <button 
-                          type="button"
-                          onClick={() => setShowFacebookMasterPass(!showFacebookMasterPass)}
-                          className="bg-white/80 hover:bg-white text-stone-700 p-1.5 rounded-lg border border-stone-200 transition flex items-center justify-center cursor-pointer shadow-2xs"
-                          title={showFacebookMasterPass ? "লুকিয়ে রাখুন" : "পাসওয়ার্ড দেখুন"}
-                        >
-                          {showFacebookMasterPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleCopy(globalSettings.facebookOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
-                          className="bg-[#764ba2] hover:bg-[#667eea] text-white text-[10px] font-bold py-1.5 px-3.5 rounded-lg shadow-sm transition"
-                        >
-                          কপি
-                        </button>
-                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleCopy(globalSettings.facebookOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
+                        className="bg-[#1877F2] hover:bg-blue-800 text-white text-[9.5px] font-black py-2 px-3.5 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Copy size={9} /> Copy Password
+                      </button>
                     </div>
                   )}
 
-                  <form onSubmit={handleFacebookSell} className="space-y-4 pt-2">
+                  {/* Facebook Sell Form and History Wrapper */}
+                  <form onSubmit={handleFacebookSell} className="bg-white border border-stone-200/80 p-5 rounded-[28px] shadow-sm space-y-4">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-stone-700 block pl-1">ফেববুক লগইন ইমেইল / ফোন নাম্বার</label>
                       <input 
@@ -4703,15 +5455,38 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         {/* VIEW: INSTAGRAM SELL */}
         {activeTab === 'instagram-sell' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-300 bg-white hover:bg-stone-50 font-semibold text-xs px-3.5 py-2 rounded-xl transition shadow-xs">
-              <ChevronRight size={14} className="rotate-180" /> Back
-            </button>
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">Instagram Sell Option</span>
+            </div>
 
-            <h2 className="text-lg font-bold text-stone-800 tracking-tight">ইন্সটাগ্রাম আইডি sell করে বোনাস ইনকাম</h2>
+            {/* Tutorial Badge button resembling screenshot */}
+            <div className="flex justify-center mt-1">
+              <a 
+                href={globalSettings.instagramTutorialUrl || "#"} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (!globalSettings.instagramTutorialUrl) {
+                    e.preventDefault();
+                    triggerToast('⚠️ দুঃখিত, এখনও কোনো টিউটোরিয়াল ভিডিও যুক্ত করা হয়নি!', 'error');
+                  }
+                }}
+                className="bg-rose-500/15 border border-rose-500/25 px-5 py-2 rounded-full flex items-center gap-2 shadow-2xs cursor-pointer hover:bg-rose-500/20 transition-all font-sans"
+              >
+                <img src="https://img.icons8.com/color/48/instagram-new.png" className="w-5 h-5 shrink-0" alt="instagram icon" />
+                <span className="text-[10px] text-rose-600 font-black">ইন্সটাগ্রাম সেল টিউটোরিয়াল!</span>
+                <div className="bg-rose-500 p-1 rounded-full text-white flex items-center justify-center w-4 h-4 shadow-sm animate-pulse">
+                  <Play size={8} className="fill-white text-white translate-x-[0.5px]" />
+                </div>
+              </a>
+            </div>
 
-            <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
+            <div className="space-y-4">
               {globalSettings.instagramMaintenanceEnabled ? (
-                <div className="text-center py-6 flex flex-col items-center space-y-3">
+                <div className="bg-white border border-stone-200 p-8 rounded-[28px] text-center py-6 flex flex-col items-center space-y-3 shadow-xs">
                   <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
                     <AlertOctagon size={24} />
                   </div>
@@ -4722,61 +5497,61 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 </div>
               ) : (
                 <>
-                  <div className="text-center py-2 flex flex-col items-center">
-                    <div className="w-14 h-14 bg-[#fa7e1e]/10 text-[#fa7e1e] rounded-full flex items-center justify-center mb-3 shadow-xs font-bold text-lg">
-                      I
-                    </div>
-                    <h4 className="font-extrabold text-stone-800 text-sm">পুরাতন ইন্সটাগ্রাম একাউন্ট বিক্রি করুন</h4>
-                    <p className="text-stone-500 text-xs mt-1 leading-relaxed">
-                      নিচে সমস্ত সঠিক লগইন ক্রেডেনশিয়াল প্রদান করে জমা দিন। এডমিনের ভেরিফিকেশনের পর আপনি পাবেন:
-                    </p>
-                    <span className="mt-2 inline-block bg-[#fa7e1e]/10 text-[#fa7e1e] font-black text-base px-4 py-1.5 rounded-full border border-[#fa7e1e]/20">
-                      ৳{globalSettings.instagramPrice || 20} (প্রতি পিস)
-                    </span>
-                    {globalSettings.instagramLastDate && (
-                      <div className={`mt-4 w-full max-w-md p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 text-center ${isDeadlinePassed(globalSettings.instagramLastDate) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-850'}`}>
-                        <div className="flex items-center gap-1 text-slate-500 font-bold">
-                          <span>🕒 সাবমিট করার শেষ সময়:</span>
-                        </div>
-                        <span className="font-extrabold text-sm leading-none pt-1 text-slate-800">{formatDeadline(globalSettings.instagramLastDate)}</span>
-                        <DeadlineCountdown deadlineStr={globalSettings.instagramLastDate} />
+                  {/* Instagram Gradient Card */}
+                  <div className="bg-gradient-to-r from-[#fa7e1e] via-[#d62976] to-[#962fbf] text-white p-5 rounded-[24px] relative overflow-hidden text-center shadow-md">
+                    <div className="absolute top-[-30px] left-[-30px] w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+                    <div className="absolute bottom-[-30px] right-[-30px] w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                    
+                    <div className="flex justify-center mb-1">
+                      <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center shadow-inner font-sans font-black text-xl">
+                        I
                       </div>
-                    )}
+                    </div>
+                    <h3 className="font-extrabold text-sm tracking-widest flex items-center justify-center gap-1 ml-0.5 uppercase">
+                      Instagram Sell
+                    </h3>
+                    <p className="text-white/85 text-[10.5px] font-bold mt-1">ইন্সটাগ্রাম একাউন্ট বিক্রি করে সহজে আয় করুন</p>
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/15 text-center">
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Rate</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">৳{(globalSettings.instagramPrice || 20.0).toFixed(2)}</strong>
+                      </div>
+                      <div className="border-x border-white/15">
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Limit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">
+                          {globalSettings.instagramDailyLimit && globalSettings.instagramDailyLimit > 0 ? globalSettings.instagramDailyLimit : 'Unlimit'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-white/70 block uppercase tracking-wider font-extrabold">Submit</span>
+                        <strong className="text-xs font-sans font-black block mt-0.5">{submittedCount24h}</strong>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Password credentials to configure */}
+                  {/* Today's Password Section */}
                   {!globalSettings.hideMasterPasswords && (
-                    <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex justify-between items-start text-xs ANONYMOUS_PASS_CARD">
-                      <div>
-                        <span className="text-stone-500 font-semibold">মাস্টার পাসওয়ার্ড:</span>
-                        <div className="font-bold text-stone-800 mt-0.5 text-sm font-mono" id="instagram-open-pass">
-                          {showInstagramMasterPass ? (globalSettings.instagramOpenPass || 'Shihab@2025#') : '••••••••••••'}
-                        </div>
-                        <p className="text-[10px] text-amber-700/90 font-bold mt-1">
-                          এই পাসওয়ার্ডটি অ্যাকাউন্ট তৈরি করতে ব্যবহার করুন
-                        </p>
+                    <div className="bg-white border-2 border-stone-150 rounded-[22px] p-4 flex justify-between items-center relative shadow-3xs overflow-hidden">
+                      <div className="text-left">
+                        <span className="text-[10px] text-stone-500 font-extrabold block">Today's Password:</span>
+                        <span className="font-sans font-black text-sm text-[#fa7e1e] select-all mt-0.5 block tracking-wide">
+                          {globalSettings.instagramOpenPass || 'Shihab@2025#'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <button 
-                          type="button"
-                          onClick={() => setShowInstagramMasterPass(!showInstagramMasterPass)}
-                          className="bg-white/80 hover:bg-white text-stone-700 p-1.5 rounded-lg border border-stone-200 transition flex items-center justify-center cursor-pointer shadow-2xs"
-                          title={showInstagramMasterPass ? "লুকিয়ে রাখুন" : "পাসওয়ার্ড দেখুন"}
-                        >
-                          {showInstagramMasterPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleCopy(globalSettings.instagramOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
-                          className="bg-[#764ba2] hover:bg-[#667eea] text-white text-[10px] font-bold py-1.5 px-3.5 rounded-lg shadow-sm transition"
-                        >
-                          কপি
-                        </button>
-                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleCopy(globalSettings.instagramOpenPass || 'Shihab@2025#', 'পাসওয়ার্ড কপি হয়েছে')}
+                        className="bg-gradient-to-r from-[#fa7e1e] to-[#d62976] text-white text-[9.5px] font-black py-2 px-3.5 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Copy size={9} /> Copy Password
+                      </button>
                     </div>
                   )}
 
-                  <form onSubmit={handleInstagramSell} className="space-y-4 pt-2">
+                  {/* Instagram Sell Form and History Wrapper */}
+                  <div className="bg-white border border-stone-200/80 p-5 rounded-[28px] shadow-sm space-y-4">
+                    <form onSubmit={handleInstagramSell} className="space-y-4 pt-2">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-stone-700 block pl-1">ইন্সটাগ্রাম ইউজারনেম / লগইন ইমেইল</label>
                       <input 
@@ -4843,6 +5618,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       {isSubmittingInstagram ? 'জমা হচ্ছে...' : 'বিক্রি করতে জমা দিন ✔'}
                     </button>
                   </form>
+                </div>
                 </>
               )}
             </div>
@@ -5638,6 +6414,678 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           </motion.div>
         )}
 
+        {activeTab === 'deposit' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24 font-sans">
+            <div className="flex justify-between items-center mb-1 bg-white border border-stone-150 p-3.5 rounded-2xl shadow-2xs">
+              <button 
+                onClick={() => switchTab('home')} 
+                className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer"
+              >
+                <ChevronRight size={14} className="rotate-180" /> ফিরে যান
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono flex items-center gap-1">
+                <ArrowDownCircle size={14} className="text-[#764ba2]" />
+                ডিপোজিট ফান্ড (Add Fund)
+              </span>
+            </div>
+
+            {/* Current Balance Indicator */}
+            <div className="bg-gradient-to-r from-teal-500/10 to-[#764ba2]/10 border border-[#764ba2]/15 p-4.5 rounded-3xl flex justify-between items-center">
+              <div>
+                <span className="text-[10px] text-stone-500 font-bold block">আপনার মূল অ্যাকাউন্ট ব্যালেন্স:</span>
+                <span className="text-xl font-black text-stone-800 font-mono">৳{(userData?.balance || 0).toFixed(2)}</span>
+              </div>
+              <div className="bg-white/90 p-2.5 rounded-2xl text-[#764ba2] shadow-xs">
+                <Wallet size={20} className="stroke-[2.5]" />
+              </div>
+            </div>
+
+            {/* Instructions box */}
+            <div className="bg-white border border-stone-150 rounded-3xl p-5 space-y-3.5 shadow-sm">
+              <h3 className="font-extrabold text-xs text-stone-800 flex items-center gap-1.5 border-b border-stone-100 pb-2">
+                <span>১. ডিপোজিট করার নিয়মাবলী</span>
+              </h3>
+              <p className="text-stone-600 text-[11px] leading-relaxed font-semibold">
+                নিচের যেকোনো বিকাশ বা নগদ পার্সোনাল নম্বরে আপনার ইচ্ছামত পরিমাণ টাকা ক্যাশআউট বা সেন্ডমানি করুন। এরপর নিচে সঠিক মাধ্যম নির্বাচন করে পেমেন্ট বিবরণী এবং ট্রানজেকশন আইডি (TrxID) দিয়ে আবেদন সাবমিট করুন।
+              </p>
+            </div>
+
+            {/* Form Section */}
+            <div className="bg-white border border-stone-150 rounded-3xl p-5 space-y-4 shadow-sm">
+              <h3 className="font-extrabold text-xs text-stone-800 border-b border-stone-100 pb-2 flex items-center justify-between">
+                <span>২. পেমেন্ট ফর্ম ও গেটওয়ে</span>
+                {globalSettings.depositFeePercent !== undefined && globalSettings.depositFeePercent > 0 && (
+                  <span className="bg-red-500/10 text-red-600 border border-red-500/20 text-[9px] px-2.5 py-0.5 rounded-full font-extrabold font-mono">
+                    চার্জ ফি: {globalSettings.depositFeePercent}%
+                  </span>
+                )}
+              </h3>
+
+              <div className="space-y-4">
+                {/* Method Select */}
+                <div className="space-y-1.5 relative">
+                  <label className="text-xs font-bold text-stone-700 pl-1 block">পেমেন্ট মেথড সিলেক্ট করুন (Method)</label>
+                  
+                  {/* Select button */}
+                  <div 
+                    onClick={() => setIsDepMethodDropdownOpen(!isDepMethodDropdownOpen)}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3.5 flex justify-between items-center cursor-pointer hover:border-stone-300 transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${selectedDepositMethod === 'bkash' ? 'bg-[#E2136E]' : 'bg-[#F7941D]'}`} />
+                      <span className="text-xs font-bold text-stone-800 uppercase">
+                        {selectedDepositMethod === 'bkash' ? 'bKash (বিকাশ পার্সোনাল)' : 'Nagad (নগদ পার্সোনাল)'}
+                      </span>
+                    </div>
+                    <ChevronDown size={15} className={`text-stone-400 transition-transform duration-200 ${isDepMethodDropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
+
+                  {/* Dropdown Options list of all methods */}
+                  {isDepMethodDropdownOpen && (
+                    <div className="absolute left-0 right-0 mt-1.5 bg-white border border-stone-250 rounded-2xl shadow-xl z-30 overflow-hidden py-1">
+                      <div 
+                        onClick={() => {
+                          setSelectedDepositMethod('bkash');
+                          setIsDepMethodDropdownOpen(false);
+                        }}
+                        className={`px-4 py-3 flex items-center justify-between cursor-pointer transition ${selectedDepositMethod === 'bkash' ? 'bg-[#E2136E]/5 text-[#E2136E]' : 'text-stone-700 hover:bg-stone-50'}`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-extrabold text-[12px] uppercase">bKash (বিকাশ)</span>
+                        </div>
+                        {selectedDepositMethod === 'bkash' && <span className="text-xs font-black">✓</span>}
+                      </div>
+                      <div 
+                        onClick={() => {
+                          setSelectedDepositMethod('nagad');
+                          setIsDepMethodDropdownOpen(false);
+                        }}
+                        className={`px-4 py-3 flex items-center justify-between cursor-pointer transition ${selectedDepositMethod === 'nagad' ? 'bg-[#F7941D]/5 text-[#F7941D]' : 'text-stone-700 hover:bg-stone-50'}`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-extrabold text-[12px] uppercase">Nagad (নগদ)</span>
+                        </div>
+                        {selectedDepositMethod === 'nagad' && <span className="text-xs font-black">✓</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Receiver Payment number */}
+                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 text-center space-y-1">
+                  <span className="text-[9.5px] font-bold text-stone-400 uppercase tracking-wide block">
+                    {selectedDepositMethod.toUpperCase()} পেমেন্ট রিসিভার নম্বর:
+                  </span>
+                  <div className="flex justify-center items-center gap-2">
+                    <span className="text-base font-black text-stone-800 font-mono tracking-wider">
+                      {selectedDepositMethod === 'bkash' 
+                        ? (globalSettings.activationNumbers?.bkash || '01727172701') 
+                        : (globalSettings.activationNumbers?.nagad || '01934984690')
+                      }
+                    </span>
+                    <button 
+                      onClick={() => handleCopy(
+                        selectedDepositMethod === 'bkash' 
+                          ? globalSettings.activationNumbers?.bkash || '01727172701' 
+                          : globalSettings.activationNumbers?.nagad || '01934984690', 
+                        'নম্বর কপি হয়েছে'
+                      )}
+                      className="p-1 hover:bg-stone-200/60 rounded-md text-[#764ba2] transition cursor-pointer"
+                    >
+                      <Copy size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                <form onSubmit={handleDepositSubmit} className="space-y-4">
+                  {/* Amount input */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 pl-1 block">ডিপোজিটের পরিমাণ (টাকা)</label>
+                    <input 
+                      type="number" 
+                      placeholder="যেমন: ৫০০"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs outline-none focus:border-[#764ba2] font-semibold transition"
+                      required
+                      min="1"
+                    />
+                  </div>
+
+                  {/* Real-time deposit fee calculations */}
+                  {parseFloat(depositAmount) > 0 && (
+                    <div className="bg-[#764ba2]/5 border border-[#764ba2]/10 rounded-2xl p-4.5 space-y-2 text-xs">
+                      <div className="flex justify-between items-center text-stone-600 font-semibold">
+                        <span>মোট ডিপোজিট পরিমাণ:</span>
+                        <span className="font-mono text-stone-800">৳{parseFloat(depositAmount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-stone-600 font-semibold">
+                        <span>ডিপোজিট ফি চার্জ ({(globalSettings.depositFeePercent || 0)}%):</span>
+                        <span className="font-mono text-red-500 font-bold">
+                          -৳{((parseFloat(depositAmount) * (globalSettings.depositFeePercent || 0)) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="border-t border-stone-200/60 pt-2 flex justify-between items-center text-stone-900 font-extrabold">
+                        <span className="text-[#764ba2]">আপনার ব্যালেন্সে যোগ হবে (নিট):</span>
+                        <span className="font-mono text-[#10b981] text-sm font-black">
+                          ৳{(parseFloat(depositAmount) - ((parseFloat(depositAmount) * (globalSettings.depositFeePercent || 0)) / 100)).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sender full number */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 pl-1 block">যে নম্বর থেকে টাকা পাঠিয়েছেন (Sender Mobile)</label>
+                    <input 
+                      type="number" 
+                      placeholder="017xxxxxxxx"
+                      value={depositNumber}
+                      onChange={(e) => setDepositNumber(e.target.value)}
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs outline-none focus:border-[#764ba2] font-semibold transition"
+                      required
+                    />
+                  </div>
+
+                  {/* Trx ID */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 pl-1 block">আপনার TrxID (Transaction ID)</label>
+                    <input 
+                      type="text" 
+                      placeholder="যেমন: 8HK7C9M2D5"
+                      value={depositTrx}
+                      onChange={(e) => setDepositTrx(e.target.value)}
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs outline-none focus:border-[#764ba2] font-mono font-bold uppercase tracking-wider transition"
+                      required
+                    />
+                  </div>
+
+                  {depositMessage.text && (
+                    <div className={`p-3.5 rounded-xl text-xs font-bold leading-relaxed flex items-center gap-2 ${depositMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
+                      {depositMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                      <span className="flex-1">{depositMessage.text}</span>
+                    </div>
+                  )}
+
+                  <button 
+                    type="submit"
+                    disabled={isSubmittingDeposit}
+                    className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white font-bold py-3.5 rounded-xl shadow-md transition disabled:opacity-55 cursor-pointer flex justify-center items-center gap-1"
+                  >
+                    {isSubmittingDeposit ? 'অনুরোধ পাঠানো হচ্ছে...' : 'ডিপোজিট বিবরণী সাবমিট করুন ✔'}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Deposit History Card */}
+            <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-4">
+              <button 
+                type="button"
+                onClick={() => handleFetchHistory('deposit')}
+                className="w-full bg-white hover:bg-stone-50 text-stone-700 border-2 border-stone-150 font-bold py-3 rounded-2xl shadow-2xs transition flex items-center justify-center gap-1.5 text-xs font-sans cursor-pointer"
+              >
+                <History size={13} />
+                <span>ডিপোজিট হিস্টোরি (লগ)</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* VIEW: QUICK TASKS */}
+        {activeTab === 'quick-tasks' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">কুইক টাস্ক (Quick Task)</span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white p-5 rounded-[24px] relative overflow-hidden text-center shadow-md">
+                <div className="absolute top-[-30px] left-[-30px] w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+                <div className="absolute bottom-[-30px] right-[-30px] w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                
+                <div className="flex justify-center mb-1">
+                  <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center shadow-inner">
+                    <TrendingUp size={20} className="text-white" />
+                  </div>
+                </div>
+                <h3 className="font-extrabold text-sm tracking-widest flex items-center justify-center gap-1 ml-0.5 uppercase">
+                  Quick Tasks
+                </h3>
+                <p className="text-white/85 text-[10.5px] font-bold mt-1">সব কুইক টাস্ক সম্পূর্ণ করে সহজে বোনাস সংগ্রহ করুন</p>
+              </div>
+
+              {homeTasks.length === 0 ? (
+                <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-3">
+                  <div className="w-14 h-14 bg-stone-50 text-stone-400 rounded-full flex items-center justify-center shadow-xs">
+                    <CheckCircle size={24} />
+                  </div>
+                  <h4 className="font-extrabold text-stone-800 text-sm">কোনো কুইক টাস্ক নেই</h4>
+                  <p className="text-stone-500 text-xs">এই মুহূর্তে কোনো কুইক টাস্ক উপলব্ধ নেই। দ্রুত নতুন টাস্ক যোগ করা হবে!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {homeTasks.map(task => (
+                    <div 
+                      key={task.id}
+                      className="bg-white border border-stone-150 p-4 rounded-2xl flex items-center justify-between shadow-xs transition hover:shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img 
+                          src={task.icon || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100'} 
+                          className="w-11 h-11 rounded-xl object-cover shrink-0 border border-stone-100" 
+                          alt="TaskIcon" 
+                        />
+                        <div className="min-w-0">
+                          <span className="font-bold text-stone-850 text-xs.5 block truncate">{task.name}</span>
+                          <span className="text-[9px] text-amber-600 font-extrabold block mt-0.5">সহজ কাজ</span>
+                        </div>
+                      </div>
+                      <a 
+                        href={task.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10.5px] py-2 px-4.5 rounded-xl transition shrink-0 shadow-xs"
+                      >
+                        কাজ করুন
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* VIEW: OTHER SITES */}
+        {activeTab === 'other-sites' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">অন্যান্য সাইট (Other Sites)</span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-indigo-500 to-indigo-700 text-white p-5 rounded-[24px] relative overflow-hidden text-center shadow-md">
+                <div className="absolute top-[-30px] left-[-30px] w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+                <div className="absolute bottom-[-30px] right-[-30px] w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
+                
+                <div className="flex justify-center mb-1">
+                  <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center shadow-inner">
+                    <Globe size={20} className="text-white" />
+                  </div>
+                </div>
+                <h3 className="font-extrabold text-sm tracking-widest flex items-center justify-center gap-1 ml-0.5 uppercase">
+                  Other Sites
+                </h3>
+                <p className="text-white/85 text-[10.5px] font-bold mt-1">আমাদের সহযোগী ও অন্যান্য দরকারী সাইট সমূহ ভিজিট করুন</p>
+              </div>
+
+              {websites.length === 0 ? (
+                <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-3">
+                  <div className="w-14 h-14 bg-stone-50 text-stone-400 rounded-full flex items-center justify-center shadow-xs">
+                    <Globe size={24} />
+                  </div>
+                  <h4 className="font-extrabold text-stone-800 text-sm">কোনো সাইট নেই</h4>
+                  <p className="text-stone-500 text-xs">এই মুহূর্তে কোনো অতিরিক্ত ওয়েবসাইট উপলব্ধ নেই।</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {websites.map(web => (
+                    <div 
+                      key={web.id}
+                      onClick={() => {
+                        if (web.maintenanceEnabled) {
+                          setActiveWebMaint(web);
+                        } else {
+                          window.open(web.url, '_blank');
+                        }
+                      }}
+                      className="bg-white border border-stone-150 p-4 rounded-2xl flex items-center justify-between shadow-xs transition hover:shadow-sm cursor-pointer hover:border-indigo-200 active:scale-95"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 bg-indigo-50 text-indigo-650 rounded-xl flex items-center justify-center shrink-0 border border-indigo-100">
+                          {web.iconName === 'ShoppingBag' && <ShoppingBag size={20} />}
+                          {web.iconName === 'Globe' && <Globe size={20} />}
+                          {web.iconName === 'Award' && <Award size={20} />}
+                          {web.iconName === 'Smartphone' && <Smartphone size={20} />}
+                          {web.iconName === 'Briefcase' && <Briefcase size={20} />}
+                          {!['ShoppingBag', 'Globe', 'Award', 'Smartphone', 'Briefcase'].includes(web.iconName || '') && <Globe size={18} />}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-stone-850 text-xs.5 block truncate">{web.name}</span>
+                          <span className="text-[9px] text-indigo-505 font-extrabold block mt-0.5">ওয়েবসাইট</span>
+                        </div>
+                      </div>
+                      <div className="text-stone-400">
+                        <ChevronRight size={16} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'ads' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24">
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-base font-extrabold text-[#764ba2] flex items-center gap-1.5 font-sans">
+                <Play className="text-[#764ba2] fill-[#764ba2]" size={19} />
+                <span>বিজ্ঞাপন দেখে আনলিমিটেড ইনকাম</span>
+              </h2>
+              <button 
+                onClick={() => switchTab('home')}
+                className="text-stone-500 hover:text-[#764ba2] text-xs font-bold transition"
+              >
+                হোমে ফিরুন
+              </button>
+            </div>
+
+            {globalSettings.adsMaintenanceEnabled ? (
+              <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
+                  <AlertOctagon size={28} />
+                </div>
+                <h3 className="font-extrabold text-stone-850 text-base">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h3>
+                <p className="text-stone-500 text-xs leading-relaxed max-w-sm">
+                  {globalSettings.adsMaintenanceMessage || 'বিজ্ঞাপন সার্ভারের কাজ চলছে। খুব শীঘ্রই এই সেবাটি পুনরায় চালু করা হবে।'}
+                </p>
+                <button 
+                  onClick={() => switchTab('home')}
+                  className="bg-stone-900 text-white font-bold text-xs py-2 px-5 rounded-xl transition"
+                >
+                  হোমে যান
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Premium Ads Balance Card */}
+                <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white p-5 rounded-[24px] shadow-sm relative overflow-hidden flex flex-col justify-between">
+                  <div className="absolute top-[-15px] right-[-15px] w-32 h-32 bg-white/5 rounded-full blur-xl"></div>
+                  <div className="space-y-1 z-10 relative">
+                    <span className="text-white/80 text-[10px] uppercase font-black tracking-wider block">আপনার বিজ্ঞাপন ব্যালেন্স</span>
+                    <h2 className="text-3xl font-black font-sans leading-none">
+                      ৳{(userData?.adsBalance || 0).toFixed(2)}
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-stone-700 font-bold px-1 text-sm">
+                    <Play size={16} className="text-[#764ba2]" />
+                    <span>চলতি বিজ্ঞাপন সমূহ</span>
+                  </div>
+
+                  {/* Adsterra Sponsor Link Block */}
+                  {globalSettings.adsterraDirectLink && (
+                    <div className="bg-[#764ba2]/5 border border-[#764ba2]/10 p-5 rounded-[24px] relative overflow-hidden flex flex-col justify-between">
+                      <div className="absolute top-[-20px] left-[-20px] w-16 h-16 bg-[#764ba2]/10 rounded-full blur-lg"></div>
+                      <div className="absolute bottom-[-20px] right-[-20px] w-16 h-16 bg-[#667eea]/10 rounded-full blur-lg"></div>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-amber-100 text-amber-800 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Sponsor Ad</span>
+                          <span className="bg-indigo-100 text-[#764ba2] text-[8px] font-bold px-2 py-0.5 rounded-full">এডস্টেরা স্পেশাল</span>
+                        </div>
+                        <span className="text-xs font-black text-rose-600 font-sans">
+                          ৳{parseFloat(globalSettings.adsterraDirectReward as any || '0.15').toFixed(2)}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-xs text-stone-800 mb-1">স্পেশাল বিজ্ঞাপন দেখে ৳{globalSettings.adsterraDirectReward || '0.15'} আয় করুন!</h4>
+                      {(() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const lastDate = userData?.lastAdsterraDate || '';
+                        const currentCount = (lastDate === todayStr) ? (userData?.dailyAdsterraCount || 0) : 0;
+                        const limit = globalSettings.adsterraDailyLimit || 10;
+                        return (
+                          <div className="text-[10px] text-[#764ba2] font-black mb-2 bg-[#764ba2]/10 px-2.5 py-1 rounded-lg w-fit inline-block">
+                            আজকের লিমিট: {currentCount} / {limit} টি বিজ্ঞাপন
+                          </div>
+                        );
+                      })()}
+                      <p className="text-stone-500 text-[10px] leading-relaxed mb-3">
+                        নিচের বাটনে ক্লিক করে বিজ্ঞাপনটি স্ক্রিনে ১৫ সেকেন্ড লোড রাখুন এবং ক্লেইম বোনাস সম্পন্ন করুন।
+                      </p>
+                      <button 
+                        onClick={handleWatchAdsterraAd}
+                        disabled={isAdWatching || isAdsterraWatching}
+                        className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white text-[11px] font-bold py-2.5 rounded-xl transition disabled:bg-stone-300 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                      >
+                        <Play size={10} className="fill-white" />
+                        {isAdsterraWatching ? `অপেক্ষা করুন... ${adsterraCountdown}S` : 'স্পেশাল এড দেখুন'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Standard Ads Block */}
+                  {ads.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {ads.map(ad => (
+                        <div 
+                          key={ad.id} 
+                          className="bg-white border border-stone-200 p-3.5 rounded-2xl flex flex-col justify-between shadow-xs text-center"
+                        >
+                          <div>
+                            <h4 className="font-bold text-xs text-stone-800 truncate mb-1">{ad.title}</h4>
+                            <span className="inline-block bg-indigo-50 text-xs font-bold text-indigo-600 px-2 py-0.5 rounded-md mb-3">
+                              ৳{(ad.reward || 0.1).toFixed(2)}
+                            </span>
+                          </div>
+                          <button 
+                            onClick={() => handleWatchAd(ad)}
+                            disabled={isAdWatching}
+                            className="w-full bg-[#764ba2] hover:bg-[#667eea] text-white text-[11px] font-bold py-2 rounded-xl transition disabled:bg-stone-300 disabled:cursor-not-allowed"
+                          >
+                            {isAdWatching && currentActiveAd?.id === ad.id ? `${adCountdown}S অপেক্ষা...` : 'ভিডিও দেখুন'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    !globalSettings.adsterraDirectLink && (
+                      <div className="bg-white border border-stone-200 p-8 rounded-3xl text-center shadow-xs">
+                        <Play size={32} className="text-stone-300 mx-auto mb-2" />
+                        <p className="text-stone-500 text-xs leading-normal font-medium">বর্তমানে কোনো বিজ্ঞাপন ক্যাম্পেইন পেন্ডিং নেই।</p>
+                      </div>
+                    )
+                  )}
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-2 mt-4">
+                  <h4 className="text-xs font-extrabold text-stone-850">⚠️ বিজ্ঞাপন দেখার নিয়মাবলি:</h4>
+                  <ul className="text-[10px] text-stone-500 list-disc list-inside space-y-1 font-semibold leading-relaxed">
+                    <li>বিজ্ঞাপনটি চালু করার পর নির্ধারিত সময় সম্পূর্ণ না হওয়া পর্যন্ত স্ক্রিন বন্ধ করবেন না।</li>
+                    <li>একটি বিজ্ঞাপন দেখার পর বিজ্ঞাপন ব্যালেন্স সরাসরি যুক্ত হয়ে যাবে।</li>
+                    <li>বিজ্ঞাপন ব্যালেন্স আলাদাভাবে টাকা উত্তোলনে গিয়ে উত্তোলন করতে পারবেন।</li>
+                    <li>ভুল উপায়ে বিজ্ঞাপন স্কিপ করার চেষ্টা করলে একাউন্ট বন্ধ করা হতে পারে।</li>
+                  </ul>
+                </div>
+              </>
+            )}
+
+            {(isAdsterraWatching || isAdWatching) && (
+              <AdsterraScriptBanner scriptCode={globalSettings.adsterraScriptCode || ''} />
+            )}
+          </motion.div>
+        )}
+
+        {activeTab === 'profile' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24 font-sans">
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-base font-extrabold text-[#764ba2] flex items-center gap-1.5">
+                <User size={19} className="text-[#764ba2]" />
+                <span>আমার প্রোফাইল (My Profile)</span>
+              </h2>
+              <button 
+                onClick={() => switchTab('home')}
+                className="text-stone-500 hover:text-[#764ba2] text-xs font-bold transition"
+              >
+                হোমে ফিরুন
+              </button>
+            </div>
+
+            <div className="bg-white border border-stone-200/80 rounded-3xl p-5 shadow-xs space-y-6">
+              {/* Profile Avatar & Header */}
+              <div className="flex items-center gap-4 border-b border-stone-100 pb-5">
+                <div className="w-16 h-16 bg-gradient-to-tr from-[#667eea] to-[#764ba2] rounded-2xl flex items-center justify-center text-white font-extrabold text-2xl shadow-sm uppercase">
+                  {(userData?.username || 'U')[0]}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-[#764ba2] text-sm leading-tight">{userData?.username || 'ইউজার প্রোফাইল'}</h3>
+                  <span className="text-[10px] text-stone-400 font-mono tracking-tight block mt-0.5">আইডি: {userId}</span>
+                  <div className="flex items-center gap-1 mt-1 text-[9.5px] text-[#764ba2] font-semibold bg-[#764ba2]/5 px-2 py-0.5 rounded-full w-fit">
+                    <CheckCircle size={9.5} className="text-[#764ba2] fill-transparent" />
+                    <span>নিবন্ধিত ব্যবহারকারী</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Details Form */}
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                {profileSuccessMsg && (
+                  <div className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-xs py-3 px-4 rounded-xl font-bold">
+                    ✓ {profileSuccessMsg}
+                  </div>
+                )}
+                {profileErrorMsg && (
+                  <div className="bg-rose-50 border border-rose-200/60 text-rose-600 text-xs py-3 px-4 rounded-xl font-bold">
+                    ⚠️ {profileErrorMsg}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Name Input */}
+                  <div className="space-y-1">
+                    <label className="text-stone-600 text-xs font-bold block">সম্পূর্ণ নাম (Full Name)</label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                        <User size={14} />
+                      </span>
+                      <input 
+                        type="text"
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        placeholder="আপনার সম্পূর্ণ নাম লিখুন"
+                        className="w-full bg-stone-50/50 border border-stone-200/80 rounded-xl py-2.5 pl-9 pr-4 text-xs font-semibold text-stone-850 placeholder-stone-400 focus:outline-none focus:border-[#764ba2] focus:bg-white transition"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gmail (Read Only) */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-stone-600 text-xs font-bold">জিমেইল এড্রেস (Registered Gmail)</label>
+                      <span className="text-[9px] text-rose-600 font-bold bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded">পরিবর্তনযোগ্য নয়</span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                        <Mail size={14} />
+                      </span>
+                      <input 
+                        type="email"
+                        value={userEmail || ''}
+                        disabled
+                        className="w-full bg-stone-100 border border-stone-200 rounded-xl py-2.5 pl-9 pr-4 text-xs font-semibold text-stone-500 cursor-not-allowed"
+                      />
+                      <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-stone-400">
+                        <Lock size={12} />
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    {/* Birth Date */}
+                    <div className="space-y-1">
+                      <label className="text-stone-600 text-xs font-bold block">জন্ম তারিখ (Birth Date)</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                          <Calendar size={14} />
+                        </span>
+                        <input 
+                          type="text"
+                          value={profileBirth}
+                          onChange={(e) => setProfileBirth(e.target.value)}
+                          placeholder="দিন/মাস/বছর"
+                          className="w-full bg-stone-50/50 border border-stone-200/80 rounded-xl py-2.5 pl-9 pr-4 text-xs font-semibold text-stone-850 placeholder-stone-400 focus:outline-none focus:border-[#764ba2] focus:bg-white transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sex / Gender Select */}
+                    <div className="space-y-1">
+                      <label className="text-stone-600 text-xs font-bold block">লিঙ্গ (Gender)</label>
+                      <select 
+                        value={profileSex}
+                        onChange={(e) => setProfileSex(e.target.value)}
+                        className="w-full bg-stone-50/50 border border-stone-200/80 rounded-xl py-2.5 px-3 text-xs font-semibold text-stone-850 focus:outline-none focus:border-[#764ba2] focus:bg-white transition"
+                      >
+                        <option value="Male">পুরুষ (Male)</option>
+                        <option value="Female">মহিলা (Female)</option>
+                        <option value="Other">অন্যান্য (Other)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    {/* Job / Occupation */}
+                    <div className="space-y-1">
+                      <label className="text-stone-600 text-xs font-bold block">পেশা (Occupation)</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                          <Briefcase size={14} />
+                        </span>
+                        <input 
+                          type="text"
+                          value={profileJob}
+                          onChange={(e) => setProfileJob(e.target.value)}
+                          placeholder="ছাত্র, চাকুরীজীবী..."
+                          className="w-full bg-stone-50/50 border border-stone-200/80 rounded-xl py-2.5 pl-9 pr-4 text-xs font-semibold text-stone-850 placeholder-stone-400 focus:outline-none focus:border-[#764ba2] focus:bg-white transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div className="space-y-1">
+                      <label className="text-stone-600 text-xs font-bold block">ঠিকানা (Location)</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                          <MapPin size={14} />
+                        </span>
+                        <input 
+                          type="text"
+                          value={profileLocation}
+                          onChange={(e) => setProfileLocation(e.target.value)}
+                          placeholder="যেমন: ঢাকা"
+                          className="w-full bg-stone-50/50 border border-stone-200/80 rounded-xl py-2.5 pl-9 pr-4 text-xs font-semibold text-stone-850 placeholder-stone-400 focus:outline-none focus:border-[#764ba2] focus:bg-white transition"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    type="submit"
+                    disabled={isUpdatingProfile}
+                    className="w-full bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white font-bold text-xs py-3 px-4 rounded-xl shadow-xs transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Save size={14} />
+                    <span>{isUpdatingProfile ? 'তথ্য সংরক্ষণ করা হচ্ছে...' : 'প্রোফাইল সংরক্ষণ করুন'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        )}
+
         {/* --- CARD TAB: INVESTMENT PLANS --- */}
         {activeTab === 'investment-plans' && (globalSettings.investmentMaintenanceEnabled ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24 font-sans">
@@ -6025,7 +7473,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     </div>
 
                     {tttGameState === 'idle' ? (
-                      <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-5 font-sans">
+                      <div className="bg-white border border-stone-200 p-5 rounded-3xl shadow-xs space-y-5 font-sans font-sans">
                         <div className="flex bg-stone-100 p-1 rounded-2xl">
                           <button 
                             onClick={() => { setTttGameMode('free'); setTttGameMessage({ text: '', type: '' }); }}
@@ -6593,6 +8041,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           </>
         )}
 
+
+
         {/* Nova Shop premium maintenance modal */}
         {isNovaShopMaintModalOpen && (
           <>
@@ -6721,6 +8171,175 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </motion.div>
             </motion.div>
           </>
+        )}
+
+        {/* Social Sell History Modal overlay */}
+        {selectedHistoryPlatform && (
+          <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] font-sans">
+            <div className="bg-white border border-stone-200/80 rounded-3xl w-full max-w-md shadow-xl overflow-hidden flex flex-col max-h-[80vh]">
+              <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white p-5 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <History size={18} />
+                  <div>
+                    <h3 className="font-extrabold text-[#ffffff] text-xs.5 uppercase tracking-wider">
+                      {selectedHistoryPlatform === 'withdraw' 
+                        ? 'উইথড্র হিস্টোরি (লগ)' 
+                        : selectedHistoryPlatform === 'deposit' 
+                        ? 'ডিপোজিট হিস্টোরি (লগ)' 
+                        : `${selectedHistoryPlatform} অ্যাকাউন্ট সেল হিস্ট্রি`}
+                    </h3>
+                    <span className="text-[9.5px] opacity-80 font-semibold block mt-0.5">
+                      {selectedHistoryPlatform === 'withdraw' 
+                        ? 'আপনার সমস্ত উইথড্রয়াল স্টেটমেন্ট' 
+                        : selectedHistoryPlatform === 'deposit'
+                        ? 'আপনার সমস্ত ডিপোজিট স্টেটমেন্ট'
+                        : 'আপনার পাঠানো সমস্ত আবেদনপত্র'}
+                    </span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedHistoryPlatform(null)}
+                  className="text-white hover:bg-white/20 p-1.5 rounded-full transition font-black text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-5 overflow-y-auto space-y-3 flex-1 bg-stone-50/50">
+                {isLoadingHistory ? (
+                  <div className="text-center py-12 space-y-2">
+                    <div className="w-8 h-8 rounded-full border-2 border-[#764ba2] border-t-transparent animate-spin mx-auto"></div>
+                    <p className="text-stone-500 text-xs font-bold">লোড হচ্ছে, অপেক্ষা করুন...</p>
+                  </div>
+                ) : historyList.length === 0 ? (
+                  <div className="text-center py-12 text-stone-400 space-y-2">
+                    <History size={36} className="mx-auto text-stone-300" />
+                    <p className="text-xs font-bold">কোনো হিস্ট্রি পাওয়া যায়নি!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {historyList.map((item) => (
+                      <div 
+                        key={item.id} 
+                        className="bg-white border border-stone-150 p-4 rounded-2xl flex flex-col justify-between shadow-2xs hover:shadow-xs transition"
+                      >
+                        <div className="flex justify-between items-start gap-2 mb-2">
+                          {selectedHistoryPlatform === 'withdraw' ? (
+                            <div className="truncate flex-1">
+                              <span className="text-[9px] text-stone-400 font-bold block mb-0.5">উইথড্রয়াল রিকোয়েস্ট (লগ)</span>
+                              <span className="text-stone-850 text-xs font-bold truncate block">
+                                ৳{parseFloat(item.amount || '0').toFixed(2)} ({item.balanceType || 'main'}) via {item.method}
+                              </span>
+                            </div>
+                          ) : selectedHistoryPlatform === 'deposit' ? (
+                            <div className="truncate flex-1">
+                              <span className="text-[9px] text-stone-400 font-bold block mb-0.5">ডিপোজিট রিকোয়েস্ট (লগ)</span>
+                              <span className="text-stone-850 text-xs font-bold truncate block">
+                                ৳{parseFloat(item.amount || '0').toFixed(2)} via {item.method}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="truncate flex-1">
+                              <span className="text-[9px] text-stone-400 font-bold block mb-0.5">লগইন আইডি/ফোন</span>
+                              <span className="text-stone-850 text-xs font-mono font-bold truncate block">
+                                {item.email || item.number || item.username || item.id}
+                              </span>
+                            </div>
+                          )}
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg shrink-0 uppercase tracking-wider ${
+                            item.status === 'accepted' || item.status === 'approved' || item.status === 'Approved'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                              : item.status === 'rejected' || item.status === 'Rejected'
+                              ? 'bg-rose-50 text-rose-600 border border-rose-150'
+                              : 'bg-amber-50 text-amber-700 border border-amber-150'
+                          }`}>
+                            {item.status === 'accepted' || item.status === 'approved' || item.status === 'Approved' ? 'গৃহীত' : item.status === 'rejected' || item.status === 'Rejected' ? 'বাতিল' : 'পেন্ডিং'}
+                          </span>
+                        </div>
+
+                        <div className="text-[10px] text-stone-500 space-y-1 bg-stone-50 p-2.5 rounded-xl font-medium">
+                          {selectedHistoryPlatform === 'withdraw' && (
+                            <>
+                              <div className="flex justify-between gap-1">
+                                <span>ফোন নাম্বার:</span>
+                                <strong className="font-mono text-stone-800 break-all">{item.number}</strong>
+                              </div>
+                              <div className="flex justify-between gap-1">
+                                <span>ব্যালেন্স টাইপ:</span>
+                                <strong className="text-stone-800 capitalize">{item.balanceType || 'main'}</strong>
+                              </div>
+                            </>
+                          )}
+                          {selectedHistoryPlatform === 'deposit' && (
+                            <>
+                              <div className="flex justify-between gap-1">
+                                <span>প্রেরক নাম্বার:</span>
+                                <strong className="font-mono text-stone-800 break-all">{item.number}</strong>
+                              </div>
+                              <div className="flex justify-between gap-1">
+                                <span>ট্রানজেকশন ID:</span>
+                                <strong className="font-mono text-stone-800 break-all select-all font-bold text-[#764ba2]">{item.trxId}</strong>
+                              </div>
+                              <div className="flex justify-between gap-1">
+                                <span>ডিপোজিট ফি ({item.feePercent || 0}%):</span>
+                                <strong className="font-mono text-red-500 font-bold">-৳{parseFloat(item.feeAmount || '0').toFixed(2)}</strong>
+                              </div>
+                              <div className="flex justify-between gap-1 border-t border-dashed border-stone-200 pt-1 mt-1">
+                                <span className="font-bold text-stone-700">ব্যালেন্স যোগ (নিট):</span>
+                                <strong className="font-mono text-emerald-600 font-black">৳{parseFloat(item.netAmount !== undefined ? item.netAmount : item.amount || '0').toFixed(2)}</strong>
+                              </div>
+                            </>
+                          )}
+                          {item.password && (
+                            <div className="flex justify-between gap-1">
+                              <span>পাসওয়ার্ড:</span>
+                              <strong className="font-mono text-stone-800 break-all">{item.password}</strong>
+                            </div>
+                          )}
+                          {item.details && (
+                            <div className="flex flex-col gap-0.5">
+                              <span>অতিরিক্ত বিবরণ:</span>
+                              <strong className="text-stone-850 font-semibold text-[9.5px] leading-relaxed break-words">{item.details}</strong>
+                            </div>
+                          )}
+                          {item.facebook2FA && (
+                            <div className="flex justify-between gap-1">
+                              <span>2FA Key / Code:</span>
+                              <strong className="font-mono text-stone-800 break-all">{item.facebook2FA}</strong>
+                            </div>
+                          )}
+                          {item.instagram2FA && (
+                            <div className="flex justify-between gap-1">
+                              <span>2FA Key / Code:</span>
+                              <strong className="font-mono text-stone-800 break-all">{item.instagram2FA}</strong>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex justify-between items-center text-[9px] text-stone-400 mt-2.5 pt-2 border-t border-stone-100">
+                          <span>{new Date(item.timestamp || Date.now()).toLocaleString()}</span>
+                          {item.status === 'rejected' && item.rejectReason && (
+                            <span className="text-rose-600 font-extrabold max-w-[180px] truncate" title={item.rejectReason}>
+                              কারণ: {item.rejectReason}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-stone-100 bg-stone-50 flex justify-end">
+                <button 
+                  onClick={() => setSelectedHistoryPlatform(null)}
+                  className="bg-stone-500 hover:bg-stone-600 text-white font-bold text-xs py-2 px-5 rounded-xl transition cursor-pointer"
+                >
+                  বন্ধ করুন
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
 

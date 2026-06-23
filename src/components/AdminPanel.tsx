@@ -26,6 +26,7 @@ import {
   GlobalSettings, 
   JobSubmission, 
   ActivationRequest,
+  DepositRequest,
   Job,
   ExternalWebsite,
   InvestmentPlan,
@@ -79,7 +80,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwitchToNovaAdmin }: AdminPanelProps) {
-  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans' | 'admins'>('stats');
+  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'deposits' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans' | 'admins'>('stats');
   const [sellSubTab, setSellSubTab] = useState<'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram'>('gmail');
 
   // Investment Plans States
@@ -100,6 +101,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [socialTexts, setSocialTexts] = useState<SocialText[]>([]);
   const [jobSubmissions, setJobSubmissions] = useState<JobSubmission[]>([]);
   const [activations, setActivations] = useState<ActivationRequest[]>([]);
+  const [deposits, setDeposits] = useState<DepositRequest[]>([]);
   const [withdraws, setWithdraws] = useState<WithdrawalRequest[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
   const [homeTasks, setHomeTasks] = useState<HomeTask[]>([]);
@@ -159,6 +161,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [newMissionReward, setNewMissionReward] = useState('50');
 
   const [setMinWithdrawLimit, setSetMinWithdrawLimit] = useState('50');
+  const [withdrawFeePercentState, setWithdrawFeePercentState] = useState('0');
+  const [depositFeePercentState, setDepositFeePercentState] = useState('0');
   const [setMinWithdrawGmailLimit, setSetMinWithdrawGmailLimit] = useState('50');
   const [setMinWithdrawTelegramLimit, setSetMinWithdrawTelegramLimit] = useState('50');
   const [setMinWithdrawWhatsappLimit, setSetMinWithdrawWhatsappLimit] = useState('50');
@@ -176,6 +180,20 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [setWhatsappBuyPrice, setSetWhatsappBuyPrice] = useState('30');
   const [setFacebookBuyPrice, setSetFacebookBuyPrice] = useState('25');
   const [setInstagramBuyPrice, setSetInstagramBuyPrice] = useState('20');
+
+  // Daily submit limits
+  const [gmailDailyLimit, setGmailDailyLimit] = useState('0');
+  const [telegramDailyLimit, setTelegramDailyLimit] = useState('0');
+  const [whatsappDailyLimit, setWhatsappDailyLimit] = useState('0');
+  const [facebookDailyLimit, setFacebookDailyLimit] = useState('0');
+  const [instagramDailyLimit, setInstagramDailyLimit] = useState('0');
+
+  // Tutorial Video URLs
+  const [gmailTutorialUrl, setGmailTutorialUrl] = useState('');
+  const [telegramTutorialUrl, setTelegramTutorialUrl] = useState('');
+  const [whatsappTutorialUrl, setWhatsappTutorialUrl] = useState('');
+  const [facebookTutorialUrl, setFacebookTutorialUrl] = useState('');
+  const [instagramTutorialUrl, setInstagramTutorialUrl] = useState('');
 
   const [signupBonusEnabled, setSignupBonusEnabled] = useState(false);
   const [signupBonusAmount, setSignupBonusAmount] = useState('0');
@@ -242,6 +260,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     sells: true,
     jobSubmissions: true,
     activations: true,
+    deposits: true,
     withdraws: true,
     settings: true,
     gmailPriceSecurity: true,
@@ -263,6 +282,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         sells: true, 
         jobSubmissions: true, 
         activations: true, 
+        deposits: true,
         withdraws: true, 
         settings: true,
         gmailPriceSecurity: true,
@@ -276,6 +296,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         sells: false,
         jobSubmissions: false,
         activations: false,
+        deposits: false,
         withdraws: false,
         settings: false,
         gmailPriceSecurity: false,
@@ -395,7 +416,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const data = snapshot.val();
       if (data) {
         const sellsList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -411,7 +432,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const data = snapshot.val();
       if (data) {
         const sellsList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -427,7 +448,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const data = snapshot.val();
       if (data) {
         const sellsList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -443,7 +464,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const data = snapshot.val();
       if (data) {
         const sellsList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -459,7 +480,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const data = snapshot.val();
       if (data) {
         const sellsList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -489,7 +510,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const data = snapshot.val();
       if (data) {
         const subList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -505,7 +526,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const data = snapshot.val();
       if (data) {
         const actList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -516,12 +537,28 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       }
     });
 
+    // Deposit requests
+    onValue(ref(db, 'deposit_requests'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const depList = Object.entries(data)
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
+          .map(([key, val]: [string, any]) => ({
+            id: key,
+            ...val
+          })).reverse();
+        setDeposits(depList);
+      } else {
+        setDeposits([]);
+      }
+    });
+
     // Withdraw requests
     onValue(ref(db, 'withdrawals'), (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const wList = Object.entries(data)
-          .filter(([, val]: [string, any]) => val.status === 'pending')
+          .filter(([, val]: [string, any]) => val && val.status === 'pending')
           .map(([key, val]: [string, any]) => ({
             id: key,
             ...val
@@ -679,6 +716,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           hideMasterPasswords: data.hideMasterPasswords || false,
           gameDailyLimit: data.gameDailyLimit || 5,
           gameFreeReward: data.gameFreeReward || 1,
+          withdrawFeePercent: data.withdrawFeePercent || 0,
+          depositFeePercent: data.depositFeePercent || 0,
           gameMaintenanceEnabled: data.gameMaintenanceEnabled || false,
           gameMaintenanceMessage: data.gameMaintenanceMessage || '',
           freeActivationEnabled: data.freeActivationEnabled || false,
@@ -692,10 +731,22 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           whatsappLastDate: data.whatsappLastDate || '',
           facebookLastDate: data.facebookLastDate || '',
           instagramLastDate: data.instagramLastDate || '',
+          gmailDailyLimit: data.gmailDailyLimit || 0,
+          telegramDailyLimit: data.telegramDailyLimit || 0,
+          whatsappDailyLimit: data.whatsappDailyLimit || 0,
+          facebookDailyLimit: data.facebookDailyLimit || 0,
+          instagramDailyLimit: data.instagramDailyLimit || 0,
+          gmailTutorialUrl: data.gmailTutorialUrl || '',
+          telegramTutorialUrl: data.telegramTutorialUrl || '',
+          whatsappTutorialUrl: data.whatsappTutorialUrl || '',
+          facebookTutorialUrl: data.facebookTutorialUrl || '',
+          instagramTutorialUrl: data.instagramTutorialUrl || '',
         });
 
         // Seed inputs
         setSetMinWithdrawLimit(String(data.minWithdraw || 50));
+        setWithdrawFeePercentState(String(data.withdrawFeePercent || 0));
+        setDepositFeePercentState(String(data.depositFeePercent || 0));
         setSetMinWithdrawGmailLimit(String(data.minWithdrawGmail || 50));
         setSetMinWithdrawTelegramLimit(String(data.minWithdrawTelegram || 50));
         setSetMinWithdrawWhatsappLimit(String(data.minWithdrawWhatsapp || 50));
@@ -713,6 +764,18 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setSetWhatsappBuyPrice(String(data.whatsappPrice || 30));
         setSetFacebookBuyPrice(String(data.facebookPrice || 25));
         setSetInstagramBuyPrice(String(data.instagramPrice || 20));
+
+        setGmailDailyLimit(String(data.gmailDailyLimit || 0));
+        setTelegramDailyLimit(String(data.telegramDailyLimit || 0));
+        setWhatsappDailyLimit(String(data.whatsappDailyLimit || 0));
+        setFacebookDailyLimit(String(data.facebookDailyLimit || 0));
+        setInstagramDailyLimit(String(data.instagramDailyLimit || 0));
+
+        setGmailTutorialUrl(data.gmailTutorialUrl || '');
+        setTelegramTutorialUrl(data.telegramTutorialUrl || '');
+        setWhatsappTutorialUrl(data.whatsappTutorialUrl || '');
+        setFacebookTutorialUrl(data.facebookTutorialUrl || '');
+        setInstagramTutorialUrl(data.instagramTutorialUrl || '');
 
         setSignupBonusEnabled(data.signupBonusEnabled || false);
         setSignupBonusAmount(String(data.signupBonusAmount || 0));
@@ -1107,6 +1170,87 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       });
       await remove(ref(db, `activation_requests/${request.id}`));
       showToast('একটিভেশন অনুরোধ বাতিল করা হয়েছে', 'success');
+    } catch (e: any) {
+      showToast('ত্রুটি: ' + e.message, 'err');
+    }
+  };
+
+  // --- ACTIVATE/APPROVE DEPOSIT REQUESTS ---
+  const handleApproveDeposit = async (request: DepositRequest) => {
+    try {
+      const userRef = ref(db, `users/${request.userId}`);
+      const userSnapshot = await get(userRef);
+      if (!userSnapshot.exists()) {
+        showToast('ইউজার ডেটাবেজে পাওয়া যায়নি', 'err');
+        return;
+      }
+
+      const userData: UserData = userSnapshot.val();
+      const feePercent = request.feePercent !== undefined ? request.feePercent : (globalSettings.depositFeePercent || 0);
+      const creditAmount = request.netAmount !== undefined 
+        ? request.netAmount 
+        : (request.amount - ((request.amount * feePercent) / 100));
+
+      // Update user main balance
+      await update(userRef, {
+        balance: (userData.balance || 0) + creditAmount
+      });
+
+      // Update status of deposit request to approved instead of removing
+      await update(ref(db, `deposit_requests/${request.id}`), {
+        status: 'approved'
+      });
+
+      // Record in wallet history
+      const historyRef = push(ref(db, `wallet_history/${request.userId}`));
+      await set(historyRef, {
+        id: historyRef.key,
+        userId: request.userId,
+        amount: creditAmount,
+        type: 'deposit',
+        purpose: request.netAmount !== undefined && request.feeAmount && request.feeAmount > 0 
+          ? `ডিপোজিট সফলভাবে সম্পন্ন হয়েছে (ফি বাদে ৳${creditAmount.toFixed(1)})`
+          : 'ডিপোজিট সফলভাবে সম্পন্ন হয়েছে (এডমিন অনুমোদিত)',
+        timestamp: Date.now()
+      });
+
+      // Push notification history
+      const notifRef = push(ref(db, `notification_history/${request.userId}`));
+      await set(notifRef, {
+        id: notifRef.key,
+        userId: request.userId,
+        title: 'ডিপোজিট সফল হয়েছে! 🎉',
+        body: request.netAmount !== undefined && request.feeAmount && request.feeAmount > 0
+          ? `অভিনন্দন! আপনার ৳${request.amount} ডিপোজিট অনুরোধটি অনুমোদন করা হয়েছে এবং ফি বাদে ৳${creditAmount.toFixed(1)} আপনার মূল ব্যালেন্সে যোগ করা হয়েছে।`
+          : `অভিনন্দন! আপনার ৳${request.amount} ডিপোজিট অনুরোধটি সফলভাবে অনমোদন করা হয়েছে এবং মূল ব্যালেন্সে যোগ করা হয়েছে।`,
+        timestamp: Date.now(),
+        read: false
+      });
+
+      showToast('ডিপোজিট সফলভাবে অনুমোদন করা হয়েছে এবং ব্যালেন্স যোগ করা হয়েছে!', 'success');
+    } catch (e: any) {
+      showToast('ত্রুটি: ' + e.message, 'err');
+    }
+  };
+
+  const handleRejectDeposit = async (request: DepositRequest) => {
+    try {
+      await update(ref(db, `deposit_requests/${request.id}`), {
+        status: 'rejected'
+      });
+
+      // Push notification history for refusal
+      const notifRef = push(ref(db, `notification_history/${request.userId}`));
+      await set(notifRef, {
+        id: notifRef.key,
+        userId: request.userId,
+        title: 'ডিপোজিট অনুরোধ বাতিল করা হয়েছে ❌',
+        body: `দুঃখিত! আপনার ৳${request.amount} ডিপোজিট অনুরোধটি বাতিল করা হয়েছে। সঠিক তথ্য প্রদান করে পুনরায় চেষ্টা করুন।`,
+        timestamp: Date.now(),
+        read: false
+      });
+
+      showToast('ডিপোজিট অনুরোধ বাতিল করা হয়েছে!', 'success');
     } catch (e: any) {
       showToast('ত্রুটি: ' + e.message, 'err');
     }
@@ -1736,6 +1880,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
             await update(userRef, { whatsappBalance: (uData.whatsappBalance || 0) + item.amount });
           } else if (balType === 'facebook') {
             await update(userRef, { facebookBalance: (uData.facebookBalance || 0) + item.amount });
+          } else if (balType === 'instagram') {
+            await update(userRef, { instagramBalance: (uData.instagramBalance || 0) + item.amount });
+          } else if (balType === 'ads') {
+            await update(userRef, { adsBalance: (uData.adsBalance || 0) + item.amount });
           } else {
             await update(userRef, { balance: (uData.balance || 0) + item.amount });
           }
@@ -1778,9 +1926,13 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       const gDailyLim = parseInt(gameDailyLimit);
       const gFreeRew = parseFloat(gameFreeReward);
       const adsterraDLim = parseInt(adsterraDailyLimit);
+      const feePercent = parseFloat(withdrawFeePercentState);
+      const depFeePercent = parseFloat(depositFeePercentState);
 
       await update(ref(db, 'settings'), {
         minWithdraw: isNaN(minW) ? 50 : minW,
+        withdrawFeePercent: isNaN(feePercent) ? 0 : feePercent,
+        depositFeePercent: isNaN(depFeePercent) ? 0 : depFeePercent,
         minWithdrawGmail: isNaN(minWgmail) ? 50 : minWgmail,
         minWithdrawTelegram: isNaN(minWtele) ? 50 : minWtele,
         minWithdrawWhatsapp: isNaN(minWwhat) ? 50 : minWwhat,
@@ -1871,6 +2023,16 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         whatsappLastDate: setWhatsappLastDate.trim(),
         facebookLastDate: setFacebookLastDate.trim(),
         instagramLastDate: setInstagramLastDate.trim(),
+        gmailDailyLimit: isNaN(parseInt(gmailDailyLimit)) ? 0 : parseInt(gmailDailyLimit),
+        telegramDailyLimit: isNaN(parseInt(telegramDailyLimit)) ? 0 : parseInt(telegramDailyLimit),
+        whatsappDailyLimit: isNaN(parseInt(whatsappDailyLimit)) ? 0 : parseInt(whatsappDailyLimit),
+        facebookDailyLimit: isNaN(parseInt(facebookDailyLimit)) ? 0 : parseInt(facebookDailyLimit),
+        instagramDailyLimit: isNaN(parseInt(instagramDailyLimit)) ? 0 : parseInt(instagramDailyLimit),
+        gmailTutorialUrl: gmailTutorialUrl.trim(),
+        telegramTutorialUrl: telegramTutorialUrl.trim(),
+        whatsappTutorialUrl: whatsappTutorialUrl.trim(),
+        facebookTutorialUrl: facebookTutorialUrl.trim(),
+        instagramTutorialUrl: instagramTutorialUrl.trim(),
         signupBonusEnabled: signupBonusEnabled,
         signupBonusAmount: isNaN(parseFloat(signupBonusAmount)) ? 0 : parseFloat(signupBonusAmount),
       });
@@ -2086,6 +2248,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
             )}
           </button>
         )}
+        {permissions.deposits && (
+          <button onClick={() => setAdminTab('deposits')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'deposits' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            <DollarSign size={13} />
+            <span>ডিপোজিট</span>
+            {deposits.length > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+            )}
+          </button>
+        )}
         {permissions.sells && (
           <button onClick={() => setAdminTab('sells')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 relative ${adminTab === 'sells' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
             <Mail size={13} />
@@ -2203,6 +2374,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   <span>ভেরিফিকেশন চেক</span>
                   <span className="bg-rose-550 text-white font-mono px-2 py-0.5 rounded text-[10px] font-bold">{activations.length}</span>
                 </button>
+                <button onClick={() => setAdminTab('deposits')} className="bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-xl p-3 text-left font-semibold text-xs transition flex justify-between items-center">
+                  <span>ডিপোজিট চেক</span>
+                  <span className="bg-rose-550 text-white font-mono px-2 py-0.5 rounded text-[10px] font-bold">{deposits.length}</span>
+                </button>
                 <button onClick={() => setAdminTab('sells')} className="bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-xl p-3 text-left font-semibold text-xs transition flex justify-between items-center">
                   <span>জিমেইল সেল চেক</span>
                   <span className="bg-rose-550 text-white font-mono px-2 py-0.5 rounded text-[10px] font-bold">{sells.length}</span>
@@ -2271,6 +2446,90 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                       </button>
                       <button 
                         onClick={() => handleRejectActivation(act)}
+                        className="bg-red-950 hover:bg-red-900 text-red-400 border border-red-800/30 font-bold p-2.5 rounded-xl transition flex justify-center items-center gap-1"
+                      >
+                        <X size={14} /> রিজেক্ট করুন
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* VIEW 2.5: DEPOSITS REQUEST APPR VAL */}
+        {adminTab === 'deposits' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <h2 className="text-base font-bold text-white tracking-wide">ইউজার ডিপোজিট ভেরিফিকেশন ও এপ্রুভাল</h2>
+
+            {deposits.length === 0 ? (
+              <div className="text-center py-10 bg-slate-950 rounded-2xl border border-slate-800">
+                <DollarSign className="text-slate-700 mx-auto mb-2" size={32} />
+                <p className="text-slate-500 text-xs">কোনো ডিপোজিট অনুরোধ পেন্ডিং নেই</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {deposits.map(dep => (
+                  <div key={dep.id} className="bg-slate-950 border border-slate-800 p-4.5 rounded-2xl space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-bold text-white text-xs">{dep.username}</h4>
+                        <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{dep.userEmail}</span>
+                      </div>
+                      <span className="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[9px] uppercase font-bold">
+                        Pending
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800/60 grid grid-cols-2 gap-2.5 text-xs">
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">অপারেটর মেথড:</span>
+                        <strong className="text-rose-455 uppercase font-bold">{dep.method}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">প্রেরক নম্বর:</span>
+                        <strong className="text-white font-semibold font-mono">{dep.number}</strong>
+                      </div>
+                      <div className="col-span-2 pt-2 border-t border-slate-800">
+                        <span className="text-slate-500 block text-[10px]">Transaction ID:</span>
+                        <strong className="text-yellow-400 font-black font-mono tracking-wider select-all block">
+                          {dep.trxId}
+                        </strong>
+                      </div>
+                      <div className="pt-2 border-t border-slate-800 col-span-2 mt-1">
+                        <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg text-[11px]">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 text-[10px] font-bold">মোট ডিপোজিট পরিমাণ:</span>
+                            <strong className="text-white font-black font-mono">৳{(dep.amount || 0).toFixed(2)}</strong>
+                          </div>
+                          {(dep.feeAmount !== undefined || dep.feePercent !== undefined) && (
+                            <div className="flex justify-between items-center text-slate-400">
+                              <span className="text-[10px] font-medium font-sans">ডিপোজিট ফি চার্জ:</span>
+                              <span className="font-mono text-red-400 text-[10.5px]">
+                                -৳{(dep.feeAmount || 0).toFixed(2)} ({dep.feePercent || 0}%)
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center border-t border-slate-800/40 pt-1.5 mt-1">
+                            <span className="text-teal-400 text-[10px] font-black uppercase font-sans">নিট ক্রেডিট (ব্যালেন্সে পাবে):</span>
+                            <strong className="text-[#10b981] font-black font-mono text-sm">
+                              ৳{(dep.netAmount !== undefined ? dep.netAmount : dep.amount).toFixed(2)}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                      <button 
+                        onClick={() => handleApproveDeposit(dep)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2.5 rounded-xl transition flex justify-center items-center gap-1"
+                      >
+                        <Check size={14} /> এপ্রুভ করুন
+                      </button>
+                      <button 
+                        onClick={() => handleRejectDeposit(dep)}
                         className="bg-red-950 hover:bg-red-900 text-red-400 border border-red-800/30 font-bold p-2.5 rounded-xl transition flex justify-center items-center gap-1"
                       >
                         <X size={14} /> রিজেক্ট করুন
@@ -3420,9 +3679,25 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           {item.balanceType || 'main'}
                         </span>
                       </div>
-                      <div className="col-span-3 pt-2 border-t border-slate-800 flex justify-between items-center bg-slate-950/20 p-2 rounded-lg mt-1">
-                        <span className="text-slate-500 text-[10px] font-bold">টাকার পরিমাণ:</span>
-                        <strong className="text-[#10b981] font-black font-mono text-sm">৳{item.amount.toFixed(2)}</strong>
+                      <div className="col-span-3 pt-2 border-t border-slate-800 space-y-1 bg-slate-950/20 p-2.5 rounded-lg mt-1 text-[11px]">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 text-[10px] font-bold">উত্তোলন মোট পরিমাণ:</span>
+                          <strong className="text-white font-black font-mono">৳{(item.amount || 0).toFixed(2)}</strong>
+                        </div>
+                        {((item as any).feeAmount !== undefined || (item as any).feePercent !== undefined) && (
+                          <div className="flex justify-between items-center text-slate-400">
+                            <span className="text-[10px] font-medium">উইথড্র ফি:</span>
+                            <span className="font-mono text-red-400 text-[10.5px]">
+                              -৳{((item as any).feeAmount || 0).toFixed(2)} ({((item as any).feePercent || 0)}%)
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center border-t border-slate-800/40 pt-1.5 mt-1">
+                          <span className="text-teal-400 text-[10px] font-black uppercase">নিট পেমেন্ট (পাবে):</span>
+                          <strong className="text-[#10b981] font-black font-mono text-sm">
+                            ৳{((item as any).netAmount !== undefined ? (item as any).netAmount : ((item as any).amount - ((item as any).feeAmount || 0))).toFixed(2)}
+                          </strong>
+                        </div>
                       </div>
                     </div>
 
@@ -4223,6 +4498,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                         />
                       </div>
                       <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">Instagram (৳)</label>
+                        <input 
+                          type="number" 
+                          value={setMinWithdrawInstagramLimit}
+                          onChange={(e) => setSetMinWithdrawInstagramLimit(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
                         <label className="text-slate-400 text-[10px] font-bold">Ads/Adsterra (৳)</label>
                         <input 
                           type="number" 
@@ -4231,6 +4515,38 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-3.5 border-t border-slate-805/40">
+                      <label className="text-teal-400 text-[10.5px] font-black tracking-wide block">উইথড্র ফি চার্জ পার্সেন্ট (Withdraw Fee %)</label>
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          placeholder="0"
+                          value={withdrawFeePercentState}
+                          onChange={(e) => setWithdrawFeePercentState(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 pr-8 text-xs outline-none focus:border-teal-500 font-extrabold font-mono text-white"
+                        />
+                        <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-500">%</span>
+                      </div>
+                      <p className="text-[8px] text-slate-500 leading-normal">টাকা উইথড্র করার সময এডমিন চার্জ হিসেবে এই পারসেন্ট কেটে রাখা হবে।</p>
+                    </div>
+
+                    <div className="space-y-1.5 pt-3.5 border-t border-slate-805/40">
+                      <label className="text-teal-400 text-[10.5px] font-black tracking-wide block">ডিপোজিট ফি চার্জ পার্সেন্ট (Deposit Fee %)</label>
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          placeholder="0"
+                          value={depositFeePercentState}
+                          onChange={(e) => setDepositFeePercentState(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 pr-8 text-xs outline-none focus:border-teal-500 font-extrabold font-mono text-white"
+                        />
+                        <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-500">%</span>
+                      </div>
+                      <p className="text-[8px] text-slate-500 leading-normal">ইউজার ডিপোজিট করার সময এডমিন চার্জ হিসেবে এই পারসেন্ট কেটে রাখা হবে।</p>
                     </div>
                   </div>
                 </div>
@@ -4268,6 +4584,27 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             onChange={(e) => setSetGmailLastDate(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white font-sans"
                           />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">দৈনিক লিমিট (০=আনলিমিটেড)</label>
+                            <input 
+                              type="number" 
+                              value={gmailDailyLimit}
+                              onChange={(e) => setGmailDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold font-mono text-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">টিউটোরিয়াল ভিডিও লিংক (URL)</label>
+                            <input 
+                              type="text" 
+                              placeholder="https://..."
+                              value={gmailTutorialUrl}
+                              onChange={(e) => setGmailTutorialUrl(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-500 font-bold text-white font-sans"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4308,6 +4645,27 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white font-sans"
                           />
                         </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">দৈনিক লিমিট (০=আনলিমিটেড)</label>
+                            <input 
+                              type="number" 
+                              value={telegramDailyLimit}
+                              onChange={(e) => setTelegramDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold font-mono text-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">টিউটোরিয়াল ভিডিও লিংক (URL)</label>
+                            <input 
+                              type="text" 
+                              placeholder="https://..."
+                              value={telegramTutorialUrl}
+                              onChange={(e) => setTelegramTutorialUrl(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-sky-450 font-bold text-white font-sans"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -4346,6 +4704,27 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             onChange={(e) => setSetWhatsappLastDate(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white font-sans"
                           />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">দৈনিক লিমিট (০=আনলিমিটেড)</label>
+                            <input 
+                              type="number" 
+                              value={whatsappDailyLimit}
+                              onChange={(e) => setWhatsappDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold font-mono text-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">টিউটোরিয়াল ভিডিও লিংক (URL)</label>
+                            <input 
+                              type="text" 
+                              placeholder="https://..."
+                              value={whatsappTutorialUrl}
+                              onChange={(e) => setWhatsappTutorialUrl(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500 font-bold text-white font-sans"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4386,6 +4765,27 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white font-sans"
                           />
                         </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">দৈনিক লিমিট (০=আনলিমিটেড)</label>
+                            <input 
+                              type="number" 
+                              value={facebookDailyLimit}
+                              onChange={(e) => setFacebookDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold font-mono text-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">টিউটোরিয়াল ভিডিও লিংক (URL)</label>
+                            <input 
+                              type="text" 
+                              placeholder="https://..."
+                              value={facebookTutorialUrl}
+                              onChange={(e) => setFacebookTutorialUrl(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-indigo-500 font-bold text-white font-sans"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -4424,6 +4824,27 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             onChange={(e) => setSetInstagramLastDate(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white font-sans"
                           />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">দৈনিক লিমিট (০=আনলিমিটেড)</label>
+                            <input 
+                              type="number" 
+                              value={instagramDailyLimit}
+                              onChange={(e) => setInstagramDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold font-mono text-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-slate-400 text-[9px] font-bold">টিউটোরিয়াল ভিডিও লিংক (URL)</label>
+                            <input 
+                              type="text" 
+                              placeholder="https://..."
+                              value={instagramTutorialUrl}
+                              onChange={(e) => setInstagramTutorialUrl(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-rose-500 font-bold text-white font-sans"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5357,6 +5778,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                       />
                       <span className="text-slate-200">ইউজার অ্যাক্টিভেশন (Activation Trx)</span>
                     </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold pr-2">
+                      <input 
+                        type="checkbox"
+                        checked={newSubAdminPermissions.deposits}
+                        onChange={(e) => setNewSubAdminPermissions(prev => ({ ...prev, deposits: e.target.checked }))}
+                        className="rounded border-slate-800 bg-slate-950 text-rose-600 focus:ring-rose-500/20 w-4 h-4"
+                      />
+                      <span className="text-slate-200">ইউজার ডিপোজিট (Deposit Request)</span>
+                    </label>
                     <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold pr-2 col-span-2 sm:col-span-1">
                       <input 
                         type="checkbox"
@@ -5471,6 +5901,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             { name: 'sells', label: 'জিমেইল-সোশ্যাল ডিলস' },
                             { name: 'jobSubmissions', label: 'জব রিভিউ' },
                             { name: 'activations', label: 'ইউজার অ্যাক্টিভেশন' },
+                            { name: 'deposits', label: 'ইউজার ডিপোজিট' },
                             { name: 'withdraws', label: 'টাকা উত্তোলন' },
                             { name: 'settings', label: 'সেটিংস ও ক্যাম্পেইন' },
                             { name: 'gmailPriceSecurity', label: 'জিমেইল প্রাইস/সিকিউরিটি' },

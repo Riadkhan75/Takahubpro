@@ -162,22 +162,11 @@ export function initializeSecurityShield(userId: string | null, userEmail: strin
   };
   document.addEventListener('keydown', handleKeyDown);
 
-  // 3. Infinite Debugger/Console Clear Trap
-  // If a hacker opens DevTools anyway, this will trigger an infinite loop inside their console panel, 
-  // choking their debugger and rendering their panel unresponsive.
+  // 3. DevTools inspection logs
+  // No-op to avoid CSP / unsafe-eval errors under strict iframe security policies
   const devtoolsTrapInterval = setInterval(() => {
-    try {
-      // Clean console from potential DOM scraping copies
-      console.clear();
-      
-      // Inline debugger trap
-      (function() {
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        const main = function() {};
-        main.constructor('debugger')();
-      })();
-    } catch (_) {}
-  }, 2200);
+    // Avoid console.clear or debugger statements to remain compliant with CSP
+  }, 10000);
 
   // Return clean-up function
   return () => {

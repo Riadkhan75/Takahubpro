@@ -4,8 +4,48 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>𝗧ᴀᴋᴀ𝗛ᴜʙ 𝗣ʀᴏ - Earning Platform</title>
-    <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Prevent any early third-party script error bubble -->
+    <script>
+      (function() {
+        var originalOnError = window.onerror;
+        window.onerror = function (message, url, line, col, error) {
+          var msgStr = String(message || "");
+          var urlStr = String(url || "");
+          if (
+            msgStr.toLowerCase().includes("script error") ||
+            !urlStr ||
+            (!urlStr.includes(window.location.host) &&
+              !urlStr.startsWith("http://localhost") &&
+              !urlStr.startsWith("/") &&
+              !urlStr.startsWith("."))
+          ) {
+            console.warn("Muted early cross-origin script error:", msgStr, "at", urlStr);
+            return true; // prevent error bubbling and reporting
+          }
+          if (originalOnError) {
+            return originalOnError.apply(window, arguments);
+          }
+          return false;
+        };
+
+        window.addEventListener('error', function(event) {
+          var msg = event.message || "";
+          var filename = event.filename || "";
+          if (
+            msg.toLowerCase().includes("script error") ||
+            !filename ||
+            (!filename.includes(window.location.host) &&
+              !filename.startsWith("http://localhost") &&
+              !filename.startsWith("/") &&
+              !filename.startsWith("."))
+          ) {
+            console.warn("Caught and suppressed third-party resource error event:", msg);
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

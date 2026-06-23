@@ -25,6 +25,10 @@ export interface UserData {
   dailyGameCount?: number;
   lastAdsterraDate?: string;
   dailyAdsterraCount?: number;
+  birth?: string;
+  job?: string;
+  location?: string;
+  sex?: string;
 }
 
 export interface WithdrawalRequest {
@@ -36,7 +40,7 @@ export interface WithdrawalRequest {
   amount: number;
   status: 'pending' | 'approved' | 'rejected';
   timestamp: number;
-  balanceType?: 'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'ads';
+  balanceType?: 'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram' | 'ads';
 }
 
 export interface GmailSellRequest {
@@ -141,6 +145,22 @@ export interface ActivationRequest {
   method: 'bkash' | 'nagad';
   number: string;
   trxId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  timestamp: number;
+}
+
+export interface DepositRequest {
+  id: string;
+  userId: string;
+  username: string;
+  userEmail: string;
+  method: 'bkash' | 'nagad';
+  number: string;
+  amount: number;
+  trxId: string;
+  feePercent?: number;
+  feeAmount?: number;
+  netAmount?: number;
   status: 'pending' | 'approved' | 'rejected';
   timestamp: number;
 }
@@ -260,8 +280,20 @@ export interface GlobalSettings {
   whatsappLastDate?: string;
   facebookLastDate?: string;
   instagramLastDate?: string;
+  gmailDailyLimit?: number;
+  telegramDailyLimit?: number;
+  whatsappDailyLimit?: number;
+  facebookDailyLimit?: number;
+  instagramDailyLimit?: number;
+  gmailTutorialUrl?: string;
+  telegramTutorialUrl?: string;
+  whatsappTutorialUrl?: string;
+  facebookTutorialUrl?: string;
+  instagramTutorialUrl?: string;
   signupBonusEnabled?: boolean;
   signupBonusAmount?: number;
+  withdrawFeePercent?: number;
+  depositFeePercent?: number;
 }
 
 export interface ExternalWebsite {
