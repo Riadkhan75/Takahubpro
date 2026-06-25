@@ -25,6 +25,11 @@ const PORT = 3000;
 
 server.use(express.json());
 
+// Google Search Console Site Verification Endpoint
+server.get('/google239b31422b7a7907.html', (req, res) => {
+  res.send('google-site-verification: google239b31422b7a7907.html');
+});
+
 // TakaHub Pro Advanced Express Security headers middleware
 server.use((req, res, next) => {
   // Prevent Content Sniffing (MIME-Spoofing mitigation)
