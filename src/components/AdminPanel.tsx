@@ -316,6 +316,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [popupTitle, setPopupTitle] = useState('');
   const [popupMessage, setPopupMessage] = useState('');
   const [popupImageUrl, setPopupImageUrl] = useState('');
+  const [popupLink, setPopupLink] = useState('');
   const [runningNotice, setRunningNotice] = useState('');
   const [emergencyEnabled, setEmergencyEnabled] = useState(false);
   const [emergencyMessage, setEmergencyMessage] = useState('');
@@ -843,6 +844,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setPopupTitle(data.popupTitle || '');
         setPopupMessage(data.popupMessage || '');
         setPopupImageUrl(data.popupImageUrl || '');
+        setPopupLink(data.popupLink || '');
         setRunningNotice(data.runningNotice || '');
         setEmergencyEnabled(data.emergencyEnabled || false);
         setEmergencyMessage(data.emergencyMessage || '');
@@ -1997,6 +1999,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         popupTitle: popupTitle.trim(),
         popupMessage: popupMessage.trim(),
         popupImageUrl: popupImageUrl.trim(),
+        popupLink: popupLink.trim(),
         runningNotice: runningNotice.trim(),
         emergencyEnabled: emergencyEnabled,
         emergencyMessage: emergencyMessage.trim(),
@@ -5020,15 +5023,27 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           />
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-400 text-[9px] font-bold">পপআপ মেসেজ</label>
-                        <input 
-                          type="text" 
-                          value={popupMessage}
-                          onChange={(e) => setPopupMessage(e.target.value)}
-                          placeholder="পপআপ বিবরণ লিখুন"
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500"
-                        />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[9px] font-bold">পপআপ মেসেজ</label>
+                          <input 
+                            type="text" 
+                            value={popupMessage}
+                            onChange={(e) => setPopupMessage(e.target.value)}
+                            placeholder="পপআপ বিবরণ লিখুন"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[9px] font-bold">পপআপ লিংক (Popup Link)</label>
+                          <input 
+                            type="text" 
+                            value={popupLink}
+                            onChange={(e) => setPopupLink(e.target.value)}
+                            placeholder="যেমন: https://t.me/yourchannel"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500"
+                          />
+                        </div>
                       </div>
 
                       {/* Global Lockdown with red high-trust warning */}

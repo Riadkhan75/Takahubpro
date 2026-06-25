@@ -711,6 +711,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
   // Game Hub selector state
   const [selectedGame, setSelectedGame] = useState<'menu' | 'ttt' | 'sholo'>('menu');
+  const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null);
 
   // Sholo Guti Game states
   const [sholoBoard, setSholoBoard] = useState<(string | null)[]>([]);
@@ -1039,6 +1040,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           popupTitle: data.popupTitle || '',
           popupMessage: data.popupMessage || '',
           popupImageUrl: data.popupImageUrl || '',
+          popupLink: data.popupLink || '',
           runningNotice: data.runningNotice || '',
           emergencyEnabled: data.emergencyEnabled ?? false,
           emergencyMessage: data.emergencyMessage || '',
@@ -3319,11 +3321,28 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               <div className="p-5 space-y-2.5">
                 <h3 className="font-extrabold text-stone-800 text-sm leading-normal">{globalSettings.popupTitle || "গুরুত্বপূর্ণ নোটিশ"}</h3>
                 <p className="text-stone-500 leading-normal text-[11px] whitespace-pre-line">{globalSettings.popupMessage}</p>
+                
+                {globalSettings.popupLink && (
+                  <a 
+                    href={globalSettings.popupLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-[#764ba2] text-white py-3 rounded-2xl font-bold hover:bg-[#667eea] transition flex items-center justify-center gap-1.5"
+                  >
+                    <span>লিংকে প্রবেশ করুন</span>
+                    <ExternalLink size={13} />
+                  </a>
+                )}
+
                 <button 
                   onClick={handleClosePopup}
-                  className="w-full mt-3 bg-[#764ba2] text-white py-3 rounded-2xl font-bold hover:bg-[#667eea] transition"
+                  className={`w-full font-bold py-2.5 rounded-2xl transition ${
+                    globalSettings.popupLink 
+                      ? 'bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px]' 
+                      : 'bg-[#764ba2] text-white hover:bg-[#667eea] text-xs'
+                  }`}
                 >
-                  বুঝেছি
+                  {globalSettings.popupLink ? 'বন্ধ করুন' : 'বুঝেছি'}
                 </button>
               </div>
             </motion.div>
@@ -5884,8 +5903,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       <div className="h-44 bg-stone-100 relative">
                         <img 
                           src={job.imageUrl || 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500'} 
-                          className="w-full h-full object-cover" 
+                          className="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition duration-200" 
                           alt="Campaign" 
+                          onClick={() => setFullscreenImageUrl(job.imageUrl || 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500')}
                         />
                         <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-xs border border-stone-150/50">
                           <span className="text-xs font-black text-amber-600">৳{(job.perTaskReward || 0.50).toFixed(2)}</span>
@@ -5948,8 +5968,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               <div className="h-48 bg-stone-50 relative">
                 <img 
                   src={selectedJob.imageUrl || 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500'} 
-                  className="w-full h-full object-cover" 
+                  className="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition duration-200" 
                   alt="Job Banner" 
+                  onClick={() => setFullscreenImageUrl(selectedJob.imageUrl || 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500')}
                 />
                 <div className="absolute top-3 left-3 bg-white/95 p-2 px-4 rounded-xl border border-stone-150 shadow-xs">
                   <span className="text-stone-500 text-xs font-bold">পুরস্কার:</span>
@@ -8339,6 +8360,33 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 </button>
               </div>
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Full Screen Image Lightbox Modal */}
+      <AnimatePresence>
+        {fullscreenImageUrl && (
+          <div 
+            className="fixed inset-0 bg-black/90 z-55 flex flex-col items-center justify-center p-4 cursor-zoom-out"
+            onClick={() => setFullscreenImageUrl(null)}
+          >
+            <div className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full transition cursor-pointer">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <motion.img 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              src={fullscreenImageUrl} 
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl" 
+              alt="Fullscreen Preview"
+              onClick={(e) => e.stopPropagation()}
+              referrerPolicy="no-referrer"
+            />
+            <span className="text-white/60 text-xs mt-4 font-bold select-none">ট্যাপ করে বন্ধ করুন</span>
           </div>
         )}
       </AnimatePresence>

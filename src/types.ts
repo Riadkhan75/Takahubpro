@@ -216,6 +216,7 @@ export interface GlobalSettings {
   popupTitle?: string;
   popupMessage?: string;
   popupImageUrl?: string;
+  popupLink?: string;
   runningNotice?: string;
   emergencyEnabled?: boolean;
   emergencyMessage?: string;
