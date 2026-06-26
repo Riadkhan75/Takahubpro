@@ -16,7 +16,8 @@ import {
   ref, 
   get, 
   set,
-  onValue
+  onValue,
+  push
 } from 'firebase/database';
 import { doc, setDoc } from 'firebase/firestore';
 import { UserData } from './types';
@@ -541,6 +542,18 @@ export default function App() {
 
         // Write user details to Database user table
         await set(ref(db, `users/${user.uid}`), userPayload);
+
+        // Log real signup activity
+        try {
+          const signupMsg = `${isAdminEmail ? 'Admin Shihab' : name} প্ল্যাটফর্মে নতুন রেজিস্ট্রেশন করেছেন! 🎉`;
+          await push(ref(db, 'recent_activities'), {
+            username: isAdminEmail ? 'Admin Shihab' : name,
+            message: signupMsg,
+            timestamp: Date.now()
+          });
+        } catch (actErr) {
+          console.warn("Failed to log signup activity:", actErr);
+        }
         
         // Also register in Nova Shop
         try {

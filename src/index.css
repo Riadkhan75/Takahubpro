@@ -22,3 +22,13 @@
   background: rgba(118, 75, 162, 0.4);
 }
 
+/* Force all text elements to be bold (font-weight: 700) as requested by user */
+body, button, input, select, textarea, span, p, a, label, li, td, th {
+  font-weight: 700 !important;
+}
+
+/* Make headings, titles, and strong tags extra bold to keep a beautiful hierarchy */
+h1, h2, h3, h4, h5, h6, strong, b {
+  font-weight: 900 !important;
+}
+

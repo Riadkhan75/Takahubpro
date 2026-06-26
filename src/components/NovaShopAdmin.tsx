@@ -815,7 +815,7 @@ export default function NovaShopAdmin({ onBackToTakahubAdmin }: NovaShopAdminPro
       {/* Custom Confirmation Modal */}
       <AnimatePresence>
         {confirmState && (
-          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

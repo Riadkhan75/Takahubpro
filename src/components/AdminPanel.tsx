@@ -237,6 +237,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [gameFreeReward, setGameFreeReward] = useState('1');
   const [gameMaintEnabled, setGameMaintEnabled] = useState(false);
   const [gameMaintMsg, setGameMaintMsg] = useState('');
+  const [scratchCardPrice, setScratchCardPrice] = useState('5');
+  const [scratchDailyLimit, setScratchDailyLimit] = useState('10');
+  const [scratchRewards, setScratchRewards] = useState('0.5,1,2,5,10,0.2,0.25,1.5');
+  const [scratchMaintEnabled, setScratchMaintEnabled] = useState(false);
+  const [scratchMaintMsg, setScratchMaintMsg] = useState('');
   const [hideMasterPasswords, setHideMasterPasswords] = useState(false);
   const [siteMaintenanceEnabled, setSiteMaintenanceEnabled] = useState(false);
   const [siteMaintenanceMessage, setSiteMaintenanceMessage] = useState('');
@@ -783,6 +788,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
 
         setGameDailyLimit(String(data.gameDailyLimit || 5));
         setGameFreeReward(String(data.gameFreeReward || 1));
+        setScratchCardPrice(String(data.scratchCardPrice || 5));
+        setScratchDailyLimit(String(data.scratchDailyLimit || 10));
+        setScratchRewards(data.scratchRewards || '0.5,1,2,5,10,0.2,0.25,1.5');
+        setScratchMaintEnabled(data.scratchMaintenanceEnabled || false);
+        setScratchMaintMsg(data.scratchMaintenanceMessage || '');
 
         // Seed support options
         setSupportTelegramChannel(data.supportTelegramChannel || '');
@@ -1957,6 +1967,11 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         gameFreeReward: isNaN(gFreeRew) ? 1 : gFreeRew,
         gameMaintenanceEnabled: gameMaintEnabled,
         gameMaintenanceMessage: gameMaintMsg.trim(),
+        scratchCardPrice: isNaN(parseFloat(scratchCardPrice)) ? 5 : parseFloat(scratchCardPrice),
+        scratchDailyLimit: isNaN(parseInt(scratchDailyLimit)) ? 10 : parseInt(scratchDailyLimit),
+        scratchRewards: scratchRewards.trim(),
+        scratchMaintenanceEnabled: scratchMaintEnabled,
+        scratchMaintenanceMessage: scratchMaintMsg.trim(),
         gmailMaintenanceEnabled: gmailMaintEnabled,
         gmailMaintenanceMessage: gmailMaintMsg.trim(),
         telegramMaintenanceEnabled: telegramMaintEnabled,
@@ -4912,6 +4927,72 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   </div>
                 </div>
 
+                {/* CARD: লাকি স্ক্র্যাচ কার্ড গেম সেটিংস */}
+                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <span className="text-[10px] text-teal-400 font-black tracking-wider uppercase block mb-1">লাকি স্ক্র্যাচ কার্ড গেম সেটিংস</span>
+                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">স্ক্র্যাচ কার্ড গেমের জন্য কার্ডের মূল্য, দৈনিক লিমিট, পুরস্কার এবং রক্ষণাবেক্ষণ মোড কনফিগার করুন।</p>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[9px] font-bold">প্রতি কার্ডের মূল্য (৳)</label>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={scratchCardPrice}
+                            onChange={(e) => setScratchCardPrice(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[9px] font-bold">দৈনিক খেলার লিমিট</label>
+                          <input 
+                            type="number" 
+                            value={scratchDailyLimit}
+                            onChange={(e) => setScratchDailyLimit(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[9px] font-bold">সম্ভাব্য পুরস্কারের তালিকা (কমা দিয়ে লিখুন)</label>
+                        <input 
+                          type="text" 
+                          value={scratchRewards}
+                          onChange={(e) => setScratchRewards(e.target.value)}
+                          placeholder="যেমন: 0.5,1,2,5,10,0.2"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs outline-none focus:border-teal-500 font-bold font-mono text-white"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <input 
+                          type="checkbox" 
+                          id="scratchMaintEnabled"
+                          checked={scratchMaintEnabled}
+                          onChange={(e) => setScratchMaintEnabled(e.target.checked)}
+                          className="rounded text-teal-500 focus:ring-teal-500 bg-slate-950 border-slate-800"
+                        />
+                        <label htmlFor="scratchMaintEnabled" className="text-slate-300 text-[10px] font-bold cursor-pointer">রক্ষণাবেক্ষণ (Maintenance) চালু করুন</label>
+                      </div>
+
+                      {scratchMaintEnabled && (
+                        <div className="space-y-1">
+                          <label className="text-slate-400 text-[9px] font-bold">রক্ষণাবেক্ষণ বার্তা</label>
+                          <input 
+                            type="text" 
+                            value={scratchMaintMsg}
+                            onChange={(e) => setScratchMaintMsg(e.target.value)}
+                            placeholder="সাময়িক রক্ষণাবেক্ষণ চলছে..."
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs outline-none focus:border-teal-500 text-white"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* CARD 7: গেটওয়ে নম্বরসমূহ */}
                 <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
                   <div>
@@ -5959,7 +6040,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setFullscreenImage(null)}
-            className="fixed inset-0 bg-slate-950/95 z-55 flex flex-col justify-center items-center p-4 cursor-zoom-out"
+            className="fixed inset-0 bg-slate-950/95 z-[55] flex flex-col justify-center items-center p-4 cursor-zoom-out"
           >
             <div className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer hover:bg-slate-850 p-2 rounded-full">
               <X size={24} />
@@ -5977,7 +6058,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       {/* Custom Confirmation Modal */}
       <AnimatePresence>
         {confirmState && (
-          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -6021,7 +6102,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
       {/* CSV Export & Data Fallback Modal */}
       <AnimatePresence>
         {csvPreviewOpen && (
-          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

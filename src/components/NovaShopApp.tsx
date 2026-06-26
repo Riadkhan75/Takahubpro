@@ -1184,7 +1184,7 @@ export default function NovaShopApp({ userId, userEmail, onBackToEarning }: Nova
       {/* Custom Confirmation Modal */}
       <AnimatePresence>
         {confirmState && (
-          <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

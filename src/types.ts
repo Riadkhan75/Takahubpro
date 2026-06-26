@@ -25,6 +25,8 @@ export interface UserData {
   dailyGameCount?: number;
   lastAdsterraDate?: string;
   dailyAdsterraCount?: number;
+  lastScratchDate?: string;
+  dailyScratchCount?: number;
   birth?: string;
   job?: string;
   location?: string;
@@ -295,6 +297,11 @@ export interface GlobalSettings {
   signupBonusAmount?: number;
   withdrawFeePercent?: number;
   depositFeePercent?: number;
+  scratchCardPrice?: number;
+  scratchDailyLimit?: number;
+  scratchRewards?: string;
+  scratchMaintenanceEnabled?: boolean;
+  scratchMaintenanceMessage?: string;
 }
 
 export interface ExternalWebsite {

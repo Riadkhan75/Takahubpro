@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ScratchCardGame from './ScratchCardGame';
+import Leaderboard from './Leaderboard';
 import { 
   auth, 
   db 
@@ -14,7 +16,8 @@ import {
   set, 
   push, 
   update, 
-  get 
+  get,
+  onChildAdded
 } from 'firebase/database';
 import { 
   UserData, 
@@ -63,6 +66,7 @@ import {
   HelpCircle,
   AlertOctagon,
   XOctagon,
+  X,
   Volume2,
   Facebook,
   Instagram,
@@ -86,7 +90,9 @@ import {
   MapPin,
   Save,
   ChevronDown,
-  ArrowDownCircle
+  ArrowDownCircle,
+  Sparkles,
+  Trophy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -665,6 +671,23 @@ const playWinSound = () => {
   }
 };
 
+export function getUserLevelAndBadge(userData: any) {
+  if (!userData) return { level: 1, label: 'Bronze', badge: '🥉', color: 'text-orange-600 bg-orange-50 border-orange-100' };
+  const totalAssets = (userData.balance || 0) + 
+                      (userData.gmailBalance || 0) + 
+                      (userData.telegramBalance || 0) + 
+                      (userData.whatsappBalance || 0) + 
+                      (userData.facebookBalance || 0) + 
+                      (userData.instagramBalance || 0) + 
+                      (userData.adsBalance || 0);
+
+  if (totalAssets >= 10000) return { level: 5, label: 'Diamond', badge: '💎', color: 'text-cyan-600 bg-cyan-50 border-cyan-100' };
+  if (totalAssets >= 5000) return { level: 4, label: 'Platinum', badge: '👑', color: 'text-indigo-600 bg-indigo-50 border-indigo-100' };
+  if (totalAssets >= 2000) return { level: 3, label: 'Gold', badge: '🥇', color: 'text-amber-600 bg-amber-50 border-amber-100' };
+  if (totalAssets >= 500) return { level: 2, label: 'Silver', badge: '🥈', color: 'text-slate-600 bg-slate-100 border-slate-200' };
+  return { level: 1, label: 'Bronze', badge: '🥉', color: 'text-orange-600 bg-orange-50 border-orange-100' };
+}
+
 interface UserAppProps {
   userId: string;
   userEmail: string;
@@ -675,7 +698,7 @@ interface UserAppProps {
 }
 
 export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, isAdminUser, onSwitchToNovaShop }: UserAppProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'investment-plans' | 'profile' | 'deposit'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'spin' | 'scratch' | 'investment-plans' | 'profile' | 'deposit' | 'leaderboard'>('home');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
@@ -686,6 +709,30 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [purchasedPlans, setPurchasedPlans] = useState<PurchasedPlan[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [socialTexts, setSocialTexts] = useState<SocialText[]>([]);
+  const [liveToasts, setLiveToasts] = useState<Array<{ id: string; text: string }>>([]);
+
+  const addLiveToast = (text: string) => {
+    // Smart Live Status Notifications are turned off
+  };
+
+  // Log helper to write user activities to the Firebase Database
+  const logUserActivity = async (actionText: string) => {
+    try {
+      const activitiesRef = ref(db, 'recent_activities');
+      const name = userData?.username || userEmail?.split('@')[0] || 'ব্যবহারকারী';
+      await push(activitiesRef, {
+        username: name,
+        message: `${name} ${actionText}`,
+        timestamp: Date.now()
+      });
+    } catch (e) {
+      console.error("Error logging user activity:", e);
+    }
+  };
+
+  useEffect(() => {
+    // Smart Live Status Notifications are turned off as requested
+  }, [userData]);
 
   // User Profile States
   const [profileName, setProfileName] = useState('');
@@ -751,21 +798,28 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
   // Popup state
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
+  
+  // Track last seen settings to re-trigger if admin modifies them
+  const lastPopupEnabled = useRef(false);
+  const lastPopupTitle = useRef('');
+  const lastPopupMessage = useRef('');
+
   useEffect(() => {
-    if (globalSettings.popupEnabled && globalSettings.popupTitle) {
-      const seen = localStorage.getItem(`seen_popup_${globalSettings.popupTitle}`);
-      if (seen) {
-        setHasSeenPopup(true);
-      } else {
+    if (globalSettings.popupEnabled) {
+      const title = globalSettings.popupTitle || '';
+      const message = globalSettings.popupMessage || '';
+      
+      // If popup was just enabled, or title/message changed, show it again
+      if (!lastPopupEnabled.current || lastPopupTitle.current !== title || lastPopupMessage.current !== message) {
         setHasSeenPopup(false);
       }
     }
-  }, [globalSettings.popupEnabled, globalSettings.popupTitle]);
+    lastPopupEnabled.current = !!globalSettings.popupEnabled;
+    lastPopupTitle.current = globalSettings.popupTitle || '';
+    lastPopupMessage.current = globalSettings.popupMessage || '';
+  }, [globalSettings.popupEnabled, globalSettings.popupTitle, globalSettings.popupMessage]);
 
   const handleClosePopup = () => {
-    if (globalSettings.popupTitle) {
-      localStorage.setItem(`seen_popup_${globalSettings.popupTitle}`, 'true');
-    }
     setHasSeenPopup(true);
   };
 
@@ -1082,6 +1136,11 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           gameFreeReward: data.gameFreeReward || 1,
           gameMaintenanceEnabled: data.gameMaintenanceEnabled ?? false,
           gameMaintenanceMessage: data.gameMaintenanceMessage || '',
+          scratchCardPrice: data.scratchCardPrice || 5,
+          scratchDailyLimit: data.scratchDailyLimit || 10,
+          scratchRewards: data.scratchRewards || '0.5,1,2,5,10,0.2,0.25,1.5',
+          scratchMaintenanceEnabled: data.scratchMaintenanceEnabled ?? false,
+          scratchMaintenanceMessage: data.scratchMaintenanceMessage || '',
           supportTelegramChannel: data.supportTelegramChannel || '',
           supportTelegramGroup: data.supportTelegramGroup || '',
           supportTelegramAdmin: data.supportTelegramAdmin || '',
@@ -1707,6 +1766,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             balance: freshBal + reward
           });
           setTttGameMessage({ text: `🎉 অভিনন্দন! আপনি ফ্রী ম্যাচ জিতেছেন এবং ৳${reward} ক্লেইম করেছেন!`, type: 'success' });
+
+          // Log real activity
+          await logUserActivity(`টিক ট্যাক টো গেম খেলে ৳${reward} ক্লেইম করেছেন! 🎮`);
         } else if (result === 'loss') {
           setTttGameMessage({ text: '❌ আপনি হেরে গেছেন! চেষ্টা করুন যেন ড্র অন্তত করতে পারেন।', type: 'error' });
         } else {
@@ -1728,6 +1790,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             balance: freshBal + doubleReward
           });
           setTttGameMessage({ text: `💥 চমত্কার! আপনি ম্যাচ জিতেছেন এবং ২ গুন বা ৳${doubleReward} প্রফিট ফেরত পেয়েছেন!`, type: 'success' });
+
+          // Log real activity
+          await logUserActivity(`টিক ট্যাক টো বাজি খেলায় ৳${doubleReward} জিতেছেন! 🎮`);
         } else if (result === 'loss') {
           setTttGameMessage({ text: `❌ আপনি ম্যাচটি হেরেছেন! আপনার বাজি ধরা ৳${betVal} কেটে নেওয়া হয়েছে।`, type: 'error' });
         } else {
@@ -1920,6 +1985,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       };
 
       await set(newRequestRef, requestPayload);
+
+      // Log real activity
+      await logUserActivity(`৳${amountVal} ডিপোজিটের অনুরোধ করেছেন। 💰`);
 
       // Telegram alert
       const alertMsg = `💰 <b>নতুন ডিপোজিট আবেদন (New Deposit Request)</b>\n\n👤 মেম্বার ইমেইল: <code>${userEmail}</code>\n💵 মেথড: <b>${selectedDepositMethod.toUpperCase()}</b>\n🔢 প্রেরক নম্বর: <code>${depositNumber}</code>\n🔑 ট্রানজেকশন আইডি (TrxID): <code>${depositTrx.toUpperCase().trim()}</code>\n💰 ডিপোজিট পরিমাণ: ৳<b>${amountVal.toFixed(1)}</b>\n💸 ডিপোজিট ফি (${feePercent}%): ৳<b>${feeAmount.toFixed(1)}</b>\n💎 মেম্বার পাবে (নিট): ৳<b>${netAmount.toFixed(1)}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে ভেরিফাই করতে এডমিন প্যানেল চেক করুন।`;
@@ -2151,6 +2219,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         timestamp: Date.now()
       });
 
+      // Log real activity
+      await logUserActivity(`একটি জিমেইল আইডি বিক্রির জন্য সাবমিট করেছেন! 📧`);
+
       // Telegram alert
       const tgGmailMessage = `📧 <b>নতুন জিমেইল বিক্রির আবেদন (New Gmail Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n🔑 ইমেইল: <code>${cleanEmail}</code>\n🔒 পাসওয়ার্ড: <code>${cleanPass}</code>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.gmailPrice || 15}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল থেকে ওটিপি চেক করে ভেরিফাই করুন।`;
       sendAdminTelegramNotification(tgGmailMessage);
@@ -2218,6 +2289,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         timestamp: Date.now()
       });
 
+      // Log real activity
+      await logUserActivity(`একটি টেলিগ্রাম একাউন্ট বিক্রির জন্য সাবমিট করেছেন! 🤖`);
+
       // Telegram alert
       const tgTelegramMessage = `🤖 <b>নতুন টেলিগ্রাম বিক্রির আবেদন (New Telegram Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n🔢 নাম্বার: <code>${telegramNumber.trim()}</code>\n📝 বিবরণ: <i>${telegramDetails.trim() || 'নেই'}</i>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.telegramPrice || 20}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল চেক করুন।`;
       sendAdminTelegramNotification(tgTelegramMessage);
@@ -2284,6 +2358,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         status: 'pending',
         timestamp: Date.now()
       });
+
+      // Log real activity
+      await logUserActivity(`একটি হোয়াটসঅ্যাপ একাউন্ট বিক্রির জন্য সাবমিট করেছেন! 💬`);
 
       // Telegram alert
       const tgWhatsappMessage = `💬 <b>নতুন হোয়াটসঅ্যাপ বিক্রির আবেদন (New WhatsApp Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n🔢 নাম্বার: <code>${whatsappNumber.trim()}</code>\n📝 বিবরণ: <i>${whatsappDetails.trim() || 'নেই'}</i>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.whatsappPrice || 30}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল চেক করুন।`;
@@ -2353,6 +2430,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         timestamp: Date.now()
       });
 
+      // Log real activity
+      await logUserActivity(`একটি ফেসবুক আইডি বিক্রির জন্য সাবমিট করেছেন! 📧`);
+
       // Telegram alert
       const tgFacebookMessage = `👥 <b>নতুন ফেসবুক বিক্রির আবেদন (New Facebook Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n📧 ইমেইল/ফোন: <code>${facebookEmail.trim()}</code>\n🔒 পাসওয়ার্ড: <code>${facebookPassword.trim()}</code>\n🔐 2FA কোড/কী: <code>${facebook2FA.trim() || 'নেই'}</code>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.facebookPrice || 25}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল চেক করুন।`;
       sendAdminTelegramNotification(tgFacebookMessage);
@@ -2421,6 +2501,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         status: 'pending',
         timestamp: Date.now()
       });
+
+      // Log real activity
+      await logUserActivity(`একটি ইন্সটাগ্রাম আইডি বিক্রির জন্য সাবমিট করেছেন! 📸`);
 
       // Telegram alert
       const tgInstagramMessage = `📸 <b>নতুন ইন্সটাগ্রাম বিক্রির আবেদন (New Instagram Sale)</b>\n\n👤 বিক্রেতা: <code>${userData?.username || 'Unknown User'}</code> (${userEmail})\n📧 ইউজারনেম/ইমেইল: <code>${instagramUsername.trim()}</code>\n🔒 পাসওয়ার্ড: <code>${instagramPassword.trim()}</code>\n🔐 2FA কোড/কী: <code>${instagram2FA.trim() || 'নেই'}</code>\n💰 সম্ভাব্য মূল্য: ৳<b>${globalSettings.instagramPrice || 20}</b>\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল চেক করুন।`;
@@ -2593,6 +2676,10 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         timestamp: Date.now(),
         balanceType: withdrawBalanceType
       });
+
+      // Log real activity
+      const bnMethod = withdrawMethod === 'Bkash' ? 'bKash' : 'Nagad';
+      await logUserActivity(`সফলভাবে ৳${amt} ${bnMethod}-এ উইথড্র রিকোয়েস্ট করেছেন। 💸`);
 
       // Deduct balance
       await update(ref(db, `users/${userId}`), {
@@ -2819,6 +2906,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         timestamp: Date.now()
       });
 
+      // Log real activity
+      await logUserActivity(`একটি মাইক্রো জব সম্পন্ন করে প্রমাণপত্র জমা দিয়েছেন! 📋`);
+
       // Telegram alert
       const tgJobMsg = `📋 <b>নতুন কাজ জমা (New Campaign Proof Submission)</b>\n\n📌 ক্যাম্পেইন: <b>${selectedJob.title}</b>\n👤 কর্মী: <code>${userData?.username || 'Worker'}</code> (${userEmail})\n📝 বিবরণ/ফিডব্যাক: <i>${submitFeedback.trim()}</i>\n💰 সম্ভাব্য আয়: ৳<b>${(selectedJob.perTaskReward || 0).toFixed(2)}</b>\n🖼️ প্রুফ ছবি: ${uploadedProofUrls.length} টি আপলোড হয়েছে\n🕒 সময়: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n🟢 অনুগ্রহ করে এডমিন প্যানেল চেক করে কাজ যাচাই করুন।`;
       sendAdminTelegramNotification(tgJobMsg);
@@ -2922,6 +3012,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         balance: newBal
       });
       triggerToast(`৳${ad.reward} ওয়ান-টাইম এডস বোনাস যোগ হয়েছে!`, 'success');
+
+      // Log real activity
+      await logUserActivity(`একটি এড দেখে ৳${ad.reward} বোনাস পেয়েছেন! 📺`);
     } catch (e: any) {
       triggerToast('ক্রেডিট যোগ করতে সমস্যা হয়েছে', 'error');
     }
@@ -3003,6 +3096,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       await update(userRef, { balance: nextBalance });
       await set(newInvestRef, purchasedPlanObj);
 
+      // Log real activity
+      await logUserActivity(`'${plan.name}' ইনভেস্টমেন্ট প্ল্যান সচল করেছেন! 📈`);
+
       // Record in wallet history
       const historyRef = push(ref(db, `wallet_history/${userId}`));
       await set(historyRef, {
@@ -3078,6 +3174,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
       // Update user balance
       await update(userRef, { balance: nextBalance });
+
+      // Log real activity
+      await logUserActivity(`'${purchased.planName}' প্ল্যান থেকে দৈনিক লভ্যাংশ ৳${dailyAmt.toFixed(2)} ক্লেইম করেছেন! 📈`);
 
       // Record in wallet history
       const historyRef = push(ref(db, `wallet_history/${userId}`));
@@ -3222,6 +3321,9 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         setShowSpinResultModal(true);
         playWinSound();
         triggerToast(`অভিনন্দন! আপনি জিতেছেন ৳${rewardVal.toFixed(2)}`, 'success');
+
+        // Log real activity
+        await logUserActivity(`লাকি স্পিন হুইল থেকে ৳${rewardVal.toFixed(2)} জিতেছেন! 🎡`);
       } catch (err: any) {
         triggerToast('বোনাস যোগ করতে ত্রুটি হয়েছে: ' + err.message, 'error');
       } finally {
@@ -3308,42 +3410,119 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       {/* 3. Popup Announcement Modal */}
       <AnimatePresence>
         {globalSettings.popupEnabled && !hasSeenPopup && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-5">
+          <div className="fixed inset-0 bg-black/60 z-[55] flex items-center justify-center p-4">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl border border-stone-100 overflow-hidden shadow-2xl w-full max-w-xs text-xs flex flex-col"
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-[340px] p-6 flex flex-col items-center text-center border border-stone-100"
             >
-              {globalSettings.popupImageUrl && (
-                <img src={globalSettings.popupImageUrl} className="w-full h-32 object-cover" alt="Announcement" referrerPolicy="no-referrer" />
-              )}
-              <div className="p-5 space-y-2.5">
-                <h3 className="font-extrabold text-stone-800 text-sm leading-normal">{globalSettings.popupTitle || "গুরুত্বপূর্ণ নোটিশ"}</h3>
-                <p className="text-stone-500 leading-normal text-[11px] whitespace-pre-line">{globalSettings.popupMessage}</p>
-                
-                {globalSettings.popupLink && (
-                  <a 
-                    href={globalSettings.popupLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full bg-[#764ba2] text-white py-3 rounded-2xl font-bold hover:bg-[#667eea] transition flex items-center justify-center gap-1.5"
-                  >
-                    <span>লিংকে প্রবেশ করুন</span>
-                    <ExternalLink size={13} />
-                  </a>
-                )}
+              {/* Close Button */}
+              <button 
+                onClick={handleClosePopup}
+                className="absolute top-4 right-4 bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-700 p-1.5 rounded-full transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={14} strokeWidth={2.5} />
+              </button>
 
-                <button 
-                  onClick={handleClosePopup}
-                  className={`w-full font-bold py-2.5 rounded-2xl transition ${
-                    globalSettings.popupLink 
-                      ? 'bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px]' 
-                      : 'bg-[#764ba2] text-white hover:bg-[#667eea] text-xs'
-                  }`}
+              {/* Concentric rings with Bell Icon */}
+              <div className="relative flex items-center justify-center w-24 h-24 mb-4 mt-1">
+                {/* Outer ring */}
+                <div className="absolute inset-0 bg-sky-100/40 rounded-full border border-sky-100/50 flex items-center justify-center">
+                  {/* Middle ring */}
+                  <div className="w-18 h-18 bg-sky-100/80 rounded-full flex items-center justify-center border border-sky-200/20">
+                    {/* Inner circle with light shadow */}
+                    <div className="w-13 h-13 bg-sky-200/90 rounded-full flex items-center justify-center shadow-inner">
+                      <Bell className="w-6 h-6 text-[#0284c7] fill-[#0284c7]/20" strokeWidth={2.5} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Title */}
+              <h3 className="font-black text-stone-800 text-base leading-normal tracking-tight mb-2">
+                {globalSettings.popupTitle || "জরুরী নোটিশ!"}
+              </h3>
+
+              {/* Message */}
+              <p className="text-stone-500 leading-relaxed text-[11px] font-medium whitespace-pre-line mb-5 max-w-[280px]">
+                {globalSettings.popupMessage || "আমাদের ওয়েবসাইটে কাজ করতে চাইলে অবশ্যই আমাদের টেলিগ্রাম চ্যানেলে জয়েন হন। সেখানে আমাদের ওয়েবসাইটের সকল আপডেট প্রতি মিনিটে মিনিটে দেওয়া হয়।"}
+              </p>
+
+              {/* Popup Optional Image */}
+              {globalSettings.popupImageUrl && (
+                <div className="w-full mb-4 rounded-2xl overflow-hidden border border-stone-100 shadow-xs">
+                  <img 
+                    src={globalSettings.popupImageUrl} 
+                    className="w-full h-24 object-cover" 
+                    alt="Announcement Media" 
+                    referrerPolicy="no-referrer" 
+                  />
+                </div>
+              )}
+
+              {/* Main Join Link Button */}
+              <a 
+                href={globalSettings.popupLink || globalSettings.supportTelegramChannel || "https://t.me/yourchannel"}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full bg-[#00a2ed] text-white py-3 px-6 rounded-full font-bold hover:bg-[#0091d4] active:scale-98 transition flex items-center justify-center gap-2 text-xs shadow-md shadow-sky-500/10 mb-4 cursor-pointer"
+              >
+                {/* Telegram Paperplane custom SVG */}
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.24-.213-.054-.333-.373-.12l-6.87 4.326-2.962-.924c-.643-.201-.658-.643.136-.953l11.57-4.458c.536-.196.99.124.814.953z"/>
+                </svg>
+                <span>জয়েন করুন!</span>
+              </a>
+
+              {/* Divider: অথবা যুক্ত হন */}
+              <div className="flex items-center gap-3 w-full text-stone-200 text-[10px] font-bold tracking-wide mb-4">
+                <div className="h-[1px] bg-stone-150 flex-1"></div>
+                <span className="text-stone-400 shrink-0 font-extrabold select-none">অথবা যুক্ত হন</span>
+                <div className="h-[1px] bg-stone-150 flex-1"></div>
+              </div>
+
+              {/* Social Channels Row */}
+              <div className="flex items-center justify-center gap-4">
+                {/* Telegram */}
+                <a 
+                  href={globalSettings.supportTelegramChannel || globalSettings.supportTelegramGroup || globalSettings.popupLink || "https://t.me/yourchannel"} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-11 h-11 bg-[#0088cc] hover:bg-[#0077b3] text-white flex items-center justify-center rounded-full hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm cursor-pointer"
+                  title="Telegram Channel"
                 >
-                  {globalSettings.popupLink ? 'বন্ধ করুন' : 'বুঝেছি'}
-                </button>
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.24-.213-.054-.333-.373-.12l-6.87 4.326-2.962-.924c-.643-.201-.658-.643.136-.953l11.57-4.458c.536-.196.99.124.814.953z"/>
+                  </svg>
+                </a>
+
+                {/* YouTube */}
+                <a 
+                  href={globalSettings.telegramTutorialUrl || "https://youtube.com"} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-11 h-11 bg-[#ff0000] hover:bg-[#e60000] text-white flex items-center justify-center rounded-full hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm cursor-pointer"
+                  title="YouTube Tutorial"
+                >
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </a>
+
+                {/* Facebook */}
+                <a 
+                  href={globalSettings.supportFacebookPage || "https://facebook.com"} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-11 h-11 bg-[#1877f2] hover:bg-[#166fe5] text-white flex items-center justify-center rounded-full hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm cursor-pointer"
+                  title="Facebook Page"
+                >
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                </a>
               </div>
             </motion.div>
           </div>
@@ -3486,6 +3665,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                 <h3 className="text-lg font-bold tracking-tight truncate max-w-full">
                   {userData?.username || 'সম্পূর্ণ নাম...'}
                 </h3>
+                {(() => {
+                  const badgeInfo = getUserLevelAndBadge(userData);
+                  return (
+                    <div className="mt-1 flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full border border-white/10 text-[10px] font-black tracking-wide text-white">
+                      <span>{badgeInfo.badge}</span>
+                      <span className="uppercase">{badgeInfo.label} Badge</span>
+                      <span className="opacity-60 font-medium">| Lvl {badgeInfo.level}</span>
+                    </div>
+                  );
+                })()}
                 <div className="flex gap-2 mt-2">
                   <button 
                     onClick={() => handleCopy(userId, 'ইউজার আইডি কপি হয়েছে')}
@@ -3550,6 +3739,13 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   <span className="flex items-center gap-1.5">
                     <span>টিক ট্যাক টো গেম</span>
                     <span className="bg-fuchsia-500 text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">Play</span>
+                  </span>
+                </button>
+                <button onClick={() => switchTab('scratch')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'scratch' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
+                  <Sparkles size={18} className="text-teal-500 animate-pulse" />
+                  <span className="flex items-center gap-1.5">
+                    <span>લાকি স্ক্র্যাচ কার্ড</span>
+                    <span className="bg-teal-500 text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase leading-none">Hot</span>
                   </span>
                 </button>
                 <button onClick={() => switchTab('notifications')} className={`w-full text-left flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition ${activeTab === 'notifications' ? 'bg-[#764ba2]/10 text-[#764ba2]' : 'text-stone-600 hover:bg-stone-50'}`}>
@@ -3963,6 +4159,25 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   </div>
                 </div>
 
+                {/* 9b. Lucky Scratch Card */}
+                <div 
+                  onClick={() => switchTab('scratch')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-teal-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Sparkles className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Lucky Scratch</span>
+                    <span className="text-[8.5px] text-teal-600 font-black leading-none block">৳{globalSettings.scratchCardPrice || 5}</span>
+                  </div>
+                </div>
+
                 {/* 10. Investment Plans */}
                 <div 
                   onClick={() => switchTab('investment-plans')}
@@ -4158,6 +4373,25 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   <div className="space-y-0.5 font-sans">
                     <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Other Sites</span>
                     <span className="text-[8.5px] text-indigo-600 font-black leading-none block">অন্যান্য সাইট</span>
+                  </div>
+                </div>
+
+                {/* Leaderboard Custom Menu button */}
+                <div 
+                  onClick={() => switchTab('leaderboard')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-yellow-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Trophy className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 font-sans">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Leaderboard</span>
+                    <span className="text-[8.5px] text-yellow-600 font-black leading-none block">সেরা আর্নার্স</span>
                   </div>
                 </div>
 
@@ -6219,6 +6453,41 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             </div>
           </motion.div>
         ))}
+        {activeTab === 'scratch' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-base font-extrabold text-stone-800">লাকি স্ক্র্যাচ কার্ড গেম</h2>
+              <button 
+                onClick={() => switchTab('home')}
+                className="text-stone-500 hover:text-[#764ba2] text-xs font-bold transition flex items-center gap-1 bg-white border border-stone-200 px-3 py-1.5 rounded-xl shadow-2xs"
+              >
+                হোমে ফিরুন
+              </button>
+            </div>
+
+            {globalSettings.scratchMaintenanceEnabled ? (
+              <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4 w-full">
+                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
+                  <AlertCircle size={28} />
+                </div>
+                <h3 className="font-extrabold text-stone-850 text-base">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h3>
+                <p className="text-[#e11d48] text-xs text-center font-medium bg-rose-50 border border-rose-200/55 p-4 rounded-xl max-w-sm leading-relaxed">
+                  {globalSettings.scratchMaintenanceMessage || 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের স্ক্র্যাচ কার্ড গেমটি বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।'}
+                </p>
+              </div>
+            ) : (
+              userData && (
+                <ScratchCardGame 
+                  userId={userId}
+                  userData={userData}
+                  globalSettings={globalSettings}
+                  onBalanceUpdate={() => {}}
+                  addLiveToast={addLiveToast}
+                />
+              )
+            )}
+          </motion.div>
+        )}
         {activeTab === 'notifications' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex justify-between items-center mb-1">
@@ -6794,6 +7063,22 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           </motion.div>
         )}
 
+        {/* VIEW: LEADERBOARD */}
+        {activeTab === 'leaderboard' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24">
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button onClick={() => switchTab('home')} className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">লিডারবোর্ড (Leaderboard)</span>
+            </div>
+
+            <div className="space-y-4">
+              <Leaderboard currentUserId={userId} />
+            </div>
+          </motion.div>
+        )}
+
         {activeTab === 'ads' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24">
             <div className="flex justify-between items-center mb-1">
@@ -7335,13 +7620,13 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => setInvestmentConfirm(null)}
-                    className="fixed inset-0 bg-black/60 z-55 backdrop-blur-xs"
+                    className="fixed inset-0 bg-black/60 z-[55] backdrop-blur-xs"
                   />
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="fixed inset-x-5 bottom-10 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 z-55 space-y-4"
+                    className="fixed inset-x-5 bottom-10 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 z-[55] space-y-4"
                   >
                     <div className="bg-[#764ba2]/5 text-[#764ba2] w-12 h-12 rounded-2xl flex items-center justify-center shrink-0">
                       <TrendingUp size={24} />
@@ -8368,7 +8653,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       <AnimatePresence>
         {fullscreenImageUrl && (
           <div 
-            className="fixed inset-0 bg-black/90 z-55 flex flex-col items-center justify-center p-4 cursor-zoom-out"
+            className="fixed inset-0 bg-black/90 z-[55] flex flex-col items-center justify-center p-4 cursor-zoom-out"
             onClick={() => setFullscreenImageUrl(null)}
           >
             <div className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full transition cursor-pointer">
@@ -8390,6 +8675,27 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           </div>
         )}
       </AnimatePresence>
+
+      {/* Live Status Notifications Toasts */}
+      <div className="fixed bottom-20 md:bottom-6 right-4 left-4 md:left-auto md:w-80 z-40 space-y-2 pointer-events-none">
+        <AnimatePresence>
+          {liveToasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 15, stiffness: 200 }}
+              className="bg-stone-900/95 text-white border border-stone-800 shadow-xl px-4 py-3 rounded-2xl pointer-events-auto flex items-center gap-2.5"
+            >
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <div className="flex-1 text-[10.5px] font-bold leading-relaxed">
+                {toast.text}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
     </div>
   );
