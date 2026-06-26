@@ -30,7 +30,8 @@ import {
   Job,
   ExternalWebsite,
   InvestmentPlan,
-  PurchasedPlan
+  PurchasedPlan,
+  GiftCode
 } from '../types';
 import { 
   Home, 
@@ -67,7 +68,8 @@ import {
   Globe,
   ShoppingBag,
   ExternalLink,
-  TrendingUp
+  TrendingUp,
+  Gift
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -80,7 +82,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwitchToNovaAdmin }: AdminPanelProps) {
-  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'deposits' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans' | 'admins'>('stats');
+  const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'deposits' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans' | 'admins' | 'gift-codes'>('stats');
   const [sellSubTab, setSellSubTab] = useState<'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram'>('gmail');
 
   // Investment Plans States
@@ -90,6 +92,13 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [planCost, setPlanCost] = useState('');
   const [planTotalReturn, setPlanTotalReturn] = useState('');
   const [planValidityDays, setPlanValidityDays] = useState('');
+
+  // Gift Code States
+  const [giftCodes, setGiftCodes] = useState<GiftCode[]>([]);
+  const [newGiftCode, setNewGiftCode] = useState('');
+  const [newGiftReward, setNewGiftReward] = useState('');
+  const [newGiftMaxUses, setNewGiftMaxUses] = useState('');
+  const [newGiftExpiration, setNewGiftExpiration] = useState('');
 
   // Database Data States
   const [dbUsers, setDbUsers] = useState<UserData[]>([]);
@@ -656,6 +665,20 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setInvestmentPlans(planList.sort((a, b) => (a.cost || 0) - (b.cost || 0)));
       } else {
         setInvestmentPlans([]);
+      }
+    });
+
+    // Gift Codes
+    onValue(ref(db, 'gift_codes'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const giftList = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })) as GiftCode[];
+        setGiftCodes(giftList.sort((a, b) => b.timestamp - a.timestamp));
+      } else {
+        setGiftCodes([]);
       }
     });
 
@@ -1874,6 +1897,66 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     });
   };
 
+  // --- GIFT CODES MANAGEMENT HANDLERS ---
+  const handleSaveGiftCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const codeStr = newGiftCode.trim();
+    const rewardVal = parseFloat(newGiftReward);
+    const maxUsesVal = newGiftMaxUses.trim() !== '' ? parseInt(newGiftMaxUses, 10) : undefined;
+    const expirationVal = newGiftExpiration.trim() !== '' ? new Date(newGiftExpiration).getTime() : undefined;
+
+    if (!codeStr || isNaN(rewardVal) || rewardVal <= 0) {
+      showToast('সব তথ্য সঠিকভাবে দিন (কোড এবং রিওয়ার্ড মূল্য বাধ্যতামূলক)', 'err');
+      return;
+    }
+
+    try {
+      // Check if code already exists
+      const existing = giftCodes.find(gc => gc.code.trim().toLowerCase() === codeStr.toLowerCase());
+      if (existing) {
+        showToast('এই কোডটি ইতিমধ্যেই তৈরি করা হয়েছে!', 'err');
+        return;
+      }
+
+      const giftsRef = ref(db, 'gift_codes');
+      const newGiftRef = push(giftsRef);
+      await set(newGiftRef, {
+        id: newGiftRef.key,
+        code: codeStr,
+        rewardAmount: rewardVal,
+        maxUses: maxUsesVal,
+        expirationTime: expirationVal,
+        usedCount: 0,
+        timestamp: Date.now()
+      });
+
+      showToast('নতুন গিফট কোড সফলভাবে যোগ করা হয়েছে', 'success');
+
+      // Reset
+      setNewGiftCode('');
+      setNewGiftReward('');
+      setNewGiftMaxUses('');
+      setNewGiftExpiration('');
+    } catch (e: any) {
+      showToast('ত্রুটি: ' + e.message, 'err');
+    }
+  };
+
+  const handleDeleteGiftCode = (id: string) => {
+    setConfirmState({
+      title: 'গিফট কোড ডিলিট নিশ্চিতকরণ',
+      message: 'আপনি কি নিশ্চিত এই গিফট কোডটি ডিলিট করতে চান?',
+      onConfirm: async () => {
+        try {
+          await remove(ref(db, `gift_codes/${id}`));
+          showToast('গিফট কোডটি সফলভাবে মুছে ফেলা হয়েছে', 'success');
+        } catch (e: any) {
+          showToast('ত্রুটি: ' + e.message, 'err');
+        }
+      }
+    });
+  };
+
   // --- CASH WITHDRAW PENDING BILL APPROVALS ---
   const handleProcessWithdraw = async (item: WithdrawalRequest, action: 'approved' | 'rejected' | 'rejected_deduct') => {
     try {
@@ -2327,6 +2410,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
             <button onClick={() => setAdminTab('plans')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'plans' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
               <TrendingUp size={13} />
               <span>ইনভেস্টমেন্ট প্ল্যান ({investmentPlans.length})</span>
+            </button>
+            <button onClick={() => setAdminTab('gift-codes')} className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shrink-0 ${adminTab === 'gift-codes' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+              <Gift size={13} />
+              <span>গিফট কোড ({giftCodes.length})</span>
             </button>
           </>
         )}
@@ -5787,6 +5874,162 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             type="button"
                             onClick={() => handleDeleteInvestmentPlan(plan.id)}
                             className="bg-rose-950/30 hover:bg-rose-900/30 border border-rose-500/20 text-rose-400 font-bold p-2 rounded-xl text-[10px] transition"
+                            title="মুছে ফেলুন"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* VIEW 12: GIFT CODES MANAGEMENT */}
+        {adminTab === 'gift-codes' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 shadow-sm">
+            {/* Add Gift Code Form Card */}
+            <form onSubmit={handleSaveGiftCode} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+              <h3 className="font-bold text-white text-xs uppercase tracking-wider pb-2 border-b border-slate-800 font-sans flex items-center gap-2">
+                <Gift size={16} className="text-rose-500" />
+                <span>➕ নতুন গিফট কোড যুক্ত করুন (Add New Gift Code)</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">গিফট কোড (Gift Code) *</label>
+                  <input 
+                    type="text" 
+                    value={newGiftCode}
+                    onChange={(e) => setNewGiftCode(e.target.value.toUpperCase())}
+                    placeholder="যেমন: WELCOME50"
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-bold text-white placeholder-slate-600 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">রিওয়ার্ড ব্যালেন্স (৳ Taka) *</label>
+                  <input 
+                    type="number" 
+                    step="any"
+                    value={newGiftReward}
+                    onChange={(e) => setNewGiftReward(e.target.value)}
+                    placeholder="যেমন: 50"
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-bold text-white placeholder-slate-600 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">সর্বোচ্চ ব্যবহার (Max Uses) - ঐচ্ছিক</label>
+                  <input 
+                    type="number" 
+                    value={newGiftMaxUses}
+                    onChange={(e) => setNewGiftMaxUses(e.target.value)}
+                    placeholder="যেমন: 100 (ফাঁকা রাখলে আনলিমিটেড)"
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-bold text-white placeholder-slate-600 focus:outline-hidden"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">মেয়াদের শেষ সময় (Expiration Time) - ঐচ্ছিক</label>
+                  <input 
+                    type="datetime-local" 
+                    value={newGiftExpiration}
+                    onChange={(e) => setNewGiftExpiration(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-hidden animate-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button 
+                  type="submit" 
+                  className="bg-rose-600 hover:bg-rose-700 font-sans font-bold text-xs text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-98 cursor-pointer"
+                >
+                  <Gift size={14} />
+                  <span>গিফট কোড সেভ করুন</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Existing Gift Codes List */}
+            <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+              <h3 className="font-bold text-white text-xs uppercase tracking-wider pb-2 border-b border-slate-800 font-sans flex items-center justify-between">
+                <span>📋 সচল গিফট কোডসমূহ ({giftCodes.length})</span>
+              </h3>
+
+              {giftCodes.length === 0 ? (
+                <div className="py-8 text-center text-slate-500 font-semibold text-xs">
+                  কোনো গিফট কোড পাওয়া যায়নি! নতুন কোড তৈরি করতে উপরের ফরমটি ব্যবহার করুন।
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {giftCodes.map((item) => {
+                    const isExpired = item.expirationTime ? Date.now() > item.expirationTime : false;
+                    const isFullyUsed = item.maxUses !== undefined && item.usedCount >= item.maxUses;
+
+                    return (
+                      <div 
+                        key={item.id} 
+                        className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between gap-3 relative overflow-hidden"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-start">
+                            <span className="bg-slate-800 text-rose-400 font-mono font-black text-xs px-2.5 py-1 rounded-lg tracking-wider uppercase border border-slate-700">
+                              {item.code}
+                            </span>
+                            <span className="text-emerald-400 font-black text-sm">
+                              ৳{item.rewardAmount}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] font-sans">
+                            <div className="text-slate-400 space-y-0.5">
+                              <span className="block text-slate-500 font-bold">ব্যবহারের সংখ্যা:</span>
+                              <span className="font-extrabold text-slate-300">
+                                {item.usedCount} / {item.maxUses !== undefined ? item.maxUses : '∞ (আনলিমিটেড)'}
+                              </span>
+                            </div>
+                            <div className="text-slate-400 space-y-0.5">
+                              <span className="block text-slate-500 font-bold">মেয়াদ শেষ সময়:</span>
+                              <span className={`font-extrabold ${isExpired ? 'text-rose-500' : 'text-slate-300'}`}>
+                                {item.expirationTime 
+                                  ? new Date(item.expirationTime).toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }) 
+                                  : 'মেয়াদহীন (Unlimited)'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-2 border-t border-slate-800/60">
+                          <div className="flex gap-1.5">
+                            {isExpired && (
+                              <span className="bg-rose-950/40 text-rose-400 border border-rose-500/10 text-[9px] px-2 py-0.5 rounded-md font-bold">
+                                মেয়াদ উত্তীর্ণ
+                              </span>
+                            )}
+                            {isFullyUsed && (
+                              <span className="bg-amber-950/40 text-amber-400 border border-amber-500/10 text-[9px] px-2 py-0.5 rounded-md font-bold">
+                                সম্পূর্ণ ব্যবহৃত
+                              </span>
+                            )}
+                            {!isExpired && !isFullyUsed && (
+                              <span className="bg-emerald-950/40 text-emerald-400 border border-emerald-500/10 text-[9px] px-2 py-0.5 rounded-md font-bold">
+                                সক্রিয় (Active)
+                              </span>
+                            )}
+                          </div>
+
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteGiftCode(item.id)}
+                            className="bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/20 text-rose-400 font-bold p-2 rounded-xl text-[10px] transition cursor-pointer"
                             title="মুছে ফেলুন"
                           >
                             <Trash2 size={13} />

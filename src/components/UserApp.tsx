@@ -32,7 +32,8 @@ import {
   ExternalWebsite,
   InvestmentPlan,
   PurchasedPlan,
-  SocialText
+  SocialText,
+  GiftCode
 } from '../types';
 import { 
   Wallet, 
@@ -67,6 +68,7 @@ import {
   AlertOctagon,
   XOctagon,
   X,
+  Check,
   Volume2,
   Facebook,
   Instagram,
@@ -698,7 +700,7 @@ interface UserAppProps {
 }
 
 export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, isAdminUser, onSwitchToNovaShop }: UserAppProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'spin' | 'scratch' | 'investment-plans' | 'profile' | 'deposit' | 'leaderboard'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'spin' | 'scratch' | 'investment-plans' | 'profile' | 'deposit' | 'leaderboard' | 'gift-code'>('home');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
@@ -792,6 +794,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   // Active or selected items
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [previousTab, setPreviousTab] = useState<'home' | 'all-jobs'>('home');
+
+  // Gift Code States
+  const [giftCodeInput, setGiftCodeInput] = useState('');
+  const [giftCodeError, setGiftCodeError] = useState<string | null>(null);
+  const [giftCodeSuccess, setGiftCodeSuccess] = useState<string | null>(null);
+  const [giftCodeSubmitting, setGiftCodeSubmitting] = useState(false);
 
   // Drawer / Side menu state
   const [isSidelineOpen, setIsSidelineOpen] = useState(false);
@@ -3349,6 +3357,88 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
     }
   };
 
+  // Claim Gift Code Handler
+  const handleClaimGiftCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!giftCodeInput.trim()) {
+      setGiftCodeError('অনুগ্রহ করে একটি গিফট কোড লিখুন।');
+      return;
+    }
+
+    setGiftCodeError(null);
+    setGiftCodeSuccess(null);
+    setGiftCodeSubmitting(true);
+
+    try {
+      const giftCodesRef = ref(db, 'gift_codes');
+      const snapshot = await get(giftCodesRef);
+      if (!snapshot.exists()) {
+        setGiftCodeError('দুঃখিত, এই কোডটি সঠিক নয় বা এর মেয়াদ শেষ হয়ে গেছে।');
+        setGiftCodeSubmitting(false);
+        return;
+      }
+
+      const allCodes: Record<string, any> = snapshot.val();
+      const codeKey = Object.keys(allCodes).find(
+        key => allCodes[key]?.code?.trim().toLowerCase() === giftCodeInput.trim().toLowerCase()
+      );
+
+      if (!codeKey) {
+        setGiftCodeError('দুঃখিত, এই কোডটি সঠিক নয় বা এর মেয়াদ শেষ হয়ে গেছে।');
+        setGiftCodeSubmitting(false);
+        return;
+      }
+
+      const codeData = allCodes[codeKey];
+
+      if (codeData.expirationTime && Date.now() > codeData.expirationTime) {
+        setGiftCodeError('দুঃখিত, এই কোডটির মেয়াদ শেষ হয়ে গেছে।');
+        setGiftCodeSubmitting(false);
+        return;
+      }
+
+      if (codeData.maxUses !== undefined && codeData.usedCount >= codeData.maxUses) {
+        setGiftCodeError('দুঃখিত, এই কোডটি ব্যবহারের সর্বোচ্চ সীমা অতিক্রম করেছে।');
+        setGiftCodeSubmitting(false);
+        return;
+      }
+
+      if (codeData.redeemedUsers && codeData.redeemedUsers[userId]) {
+        setGiftCodeError('আপনি ইতিমধ্যে এই গিফট কোডটি রিডিম বা ব্যবহার করেছেন!');
+        setGiftCodeSubmitting(false);
+        return;
+      }
+
+      const currentBalance = userData?.balance || 0;
+      const reward = parseFloat(codeData.rewardAmount) || 0;
+      const nextBal = currentBalance + reward;
+
+      await update(ref(db, `users/${userId}`), { balance: nextBal });
+      
+      const nextUsedCount = (codeData.usedCount || 0) + 1;
+      await update(ref(db, `gift_codes/${codeKey}`), {
+        usedCount: nextUsedCount,
+        [`redeemedUsers/${userId}`]: true
+      });
+
+      if (userData) {
+        setUserData({
+          ...userData,
+          balance: nextBal
+        });
+      }
+
+      setGiftCodeSuccess(`অভিনন্দন! আপনি সফলভাবে ৳${reward} গিফট বোনাস পেয়েছেন।`);
+      setGiftCodeInput('');
+      triggerToast(`৳${reward} গিফট বোনাস সফলভাবে যুক্ত হয়েছে!`, 'success');
+    } catch (err) {
+      console.error(err);
+      setGiftCodeError('কোড রিডিম করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setGiftCodeSubmitting(false);
+    }
+  };
+
   // Calculations for micro job budget slotting previews
   const computedSlots = parseFloat(postJobReward) > 0 && parseFloat(postJobBudget) > 0 
     ? Math.floor(parseFloat(postJobBudget) / parseFloat(postJobReward)) 
@@ -4392,6 +4482,25 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   <div className="space-y-0.5 font-sans">
                     <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Leaderboard</span>
                     <span className="text-[8.5px] text-yellow-600 font-black leading-none block">সেরা আর্নার্স</span>
+                  </div>
+                </div>
+
+                {/* Gift Code Custom Menu button */}
+                <div 
+                  onClick={() => switchTab('gift-code')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-rose-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Gift className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 font-sans">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Gift Code</span>
+                    <span className="text-[8.5px] text-rose-500 font-black leading-none block">গিফট কোড</span>
                   </div>
                 </div>
 
@@ -7075,6 +7184,83 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
             <div className="space-y-4">
               <Leaderboard currentUserId={userId} />
+            </div>
+          </motion.div>
+        )}
+
+        {/* VIEW: GIFT CODE */}
+        {activeTab === 'gift-code' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24">
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button 
+                onClick={() => {
+                  switchTab('home');
+                  setGiftCodeError(null);
+                  setGiftCodeSuccess(null);
+                  setGiftCodeInput('');
+                }} 
+                className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer"
+              >
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">গিফট কোড (Gift Code)</span>
+            </div>
+
+            <div className="bg-white border border-stone-200 p-6 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-5">
+              <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-3xl flex items-center justify-center relative shadow-xs">
+                <div className="absolute inset-0 bg-rose-500/10 rounded-3xl blur-md"></div>
+                <Gift className="stroke-[2.5px] relative" size={28} />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-stone-850 text-base">গিফট কোড রিডিম করুন</h3>
+                <p className="text-stone-500 text-xs px-4 leading-relaxed">
+                  আপনার প্রাপ্ত স্পেশাল প্রমোশনাল গিফট কোডটি নিচের ঘরে বসিয়ে বোনাস রিওয়ার্ডটি সরাসরি আপনার মেইন ব্যালেন্সে যোগ করে নিন।
+                </p>
+              </div>
+
+              <form onSubmit={handleClaimGiftCode} className="w-full max-w-xs space-y-4 pt-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={giftCodeInput}
+                    onChange={(e) => setGiftCodeInput(e.target.value)}
+                    placeholder="কোডটি এখানে লিখুন (যেমন: BONUS100)"
+                    className="w-full bg-stone-50 border border-stone-200 focus:border-rose-500 rounded-2xl px-4 py-3.5 text-center font-black text-sm tracking-widest text-stone-900 uppercase focus:outline-hidden transition-all shadow-2xs placeholder:text-stone-400 placeholder:font-bold placeholder:tracking-normal"
+                    disabled={giftCodeSubmitting}
+                  />
+                </div>
+
+                {giftCodeError && (
+                  <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-[#e11d48] text-xs font-bold bg-rose-50 border border-rose-100 p-3 rounded-xl leading-relaxed">
+                    {giftCodeError}
+                  </motion.div>
+                )}
+
+                {giftCodeSuccess && (
+                  <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-emerald-600 text-xs font-bold bg-emerald-50 border border-emerald-100 p-3 rounded-xl leading-relaxed">
+                    {giftCodeSuccess}
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={giftCodeSubmitting}
+                  className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-extrabold text-xs py-3.5 px-4 rounded-2xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {giftCodeSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      ভেরিফাই হচ্ছে...
+                    </span>
+                  ) : (
+                    <>
+                      <Check size={14} className="stroke-[3px]" />
+                      বোনাস ক্লেম করুন
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
           </motion.div>
         )}

@@ -351,3 +351,14 @@ export interface SocialText {
   timestamp: number;
 }
 
+export interface GiftCode {
+  id: string;
+  code: string;
+  rewardAmount: number;
+  expirationTime?: number;
+  maxUses?: number;
+  usedCount: number;
+  redeemedUsers?: Record<string, boolean>;
+  timestamp: number;
+}
+
