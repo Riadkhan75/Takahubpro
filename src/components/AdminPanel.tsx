@@ -252,6 +252,18 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [scratchMaintEnabled, setScratchMaintEnabled] = useState(false);
   const [scratchMaintMsg, setScratchMaintMsg] = useState('');
   const [hideMasterPasswords, setHideMasterPasswords] = useState(false);
+  const [hideGmailSell, setHideGmailSell] = useState(false);
+  const [hideTelegramSell, setHideTelegramSell] = useState(false);
+  const [hideWhatsappSell, setHideWhatsappSell] = useState(false);
+  const [hideFacebookSell, setHideFacebookSell] = useState(false);
+  const [hideInstagramSell, setHideInstagramSell] = useState(false);
+  const [referBonusAmount, setReferBonusAmount] = useState('10');
+  const [mathSolveReward, setMathSolveReward] = useState('1.0');
+  const [mathSolveDailyLimit, setMathSolveDailyLimit] = useState('10');
+  const [quizReward, setQuizReward] = useState('1.0');
+  const [quizDailyLimit, setQuizDailyLimit] = useState('10');
+  const [hideMathSolve, setHideMathSolve] = useState(false);
+  const [hideQuiz, setHideQuiz] = useState(false);
   const [siteMaintenanceEnabled, setSiteMaintenanceEnabled] = useState(false);
   const [siteMaintenanceMessage, setSiteMaintenanceMessage] = useState('');
   const [setBkashNumber, setSetBkashNumber] = useState('01727172701');
@@ -743,6 +755,18 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           supportFacebookPage: data.supportFacebookPage || '',
           supportWhatsAppNumber: data.supportWhatsAppNumber || '',
           hideMasterPasswords: data.hideMasterPasswords || false,
+          hideGmailSell: data.hideGmailSell || false,
+          hideTelegramSell: data.hideTelegramSell || false,
+          hideWhatsappSell: data.hideWhatsappSell || false,
+          hideFacebookSell: data.hideFacebookSell || false,
+          hideInstagramSell: data.hideInstagramSell || false,
+          referBonusAmount: data.referBonusAmount || 10,
+          mathSolveReward: data.mathSolveReward || 1.0,
+          mathSolveDailyLimit: data.mathSolveDailyLimit || 10,
+          quizReward: data.quizReward || 1.0,
+          quizDailyLimit: data.quizDailyLimit || 10,
+          hideMathSolve: data.hideMathSolve || false,
+          hideQuiz: data.hideQuiz || false,
           gameDailyLimit: data.gameDailyLimit || 5,
           gameFreeReward: data.gameFreeReward || 1,
           withdrawFeePercent: data.withdrawFeePercent || 0,
@@ -885,6 +909,18 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setSiteMaintenanceMessage(data.siteMaintenanceMessage || '');
         setSpinRewards(data.spinRewards || '0.5,1.0,2.0,5.0,10.0,0.1,0.25,0.0');
         setHideMasterPasswords(data.hideMasterPasswords || false);
+        setHideGmailSell(data.hideGmailSell || false);
+        setHideTelegramSell(data.hideTelegramSell || false);
+        setHideWhatsappSell(data.hideWhatsappSell || false);
+        setHideFacebookSell(data.hideFacebookSell || false);
+        setHideInstagramSell(data.hideInstagramSell || false);
+        setReferBonusAmount(String(data.referBonusAmount ?? 10));
+        setMathSolveReward(String(data.mathSolveReward ?? '1.0'));
+        setMathSolveDailyLimit(String(data.mathSolveDailyLimit ?? '10'));
+        setQuizReward(String(data.quizReward ?? '1.0'));
+        setQuizDailyLimit(String(data.quizDailyLimit ?? '10'));
+        setHideMathSolve(data.hideMathSolve || false);
+        setHideQuiz(data.hideQuiz || false);
         setFreeActivationEnabled(data.freeActivationEnabled || false);
         setAdsterraDirectLink(data.adsterraDirectLink || '');
         setAdsterraDirectReward(String(data.adsterraDirectReward ?? '0.15'));
@@ -1180,9 +1216,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
             const referrerUid = referrerEntry[0];
             const referrerData = referrerEntry[1] as UserData;
             
-            // Add ৳10 rewards, increment referred counts
+            // Add dynamic referral rewards, increment referred counts
+            const refBonus = globalSettings.referBonusAmount !== undefined ? globalSettings.referBonusAmount : 10;
             await update(ref(db, `users/${referrerUid}`), {
-              balance: (referrerData.balance || 0) + 10,
+              balance: (referrerData.balance || 0) + refBonus,
               totalRefers: (referrerData.totalRefers || 0) + 1
             });
 
@@ -2112,6 +2149,18 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         telegramAdminBotToken: telegramAdminBotToken.trim(),
         telegramAdminChatId: telegramAdminChatId.trim(),
         hideMasterPasswords: hideMasterPasswords,
+        hideGmailSell: hideGmailSell,
+        hideTelegramSell: hideTelegramSell,
+        hideWhatsappSell: hideWhatsappSell,
+        hideFacebookSell: hideFacebookSell,
+        hideInstagramSell: hideInstagramSell,
+        referBonusAmount: isNaN(parseFloat(referBonusAmount)) ? 10 : parseFloat(referBonusAmount),
+        mathSolveReward: isNaN(parseFloat(mathSolveReward)) ? 1.0 : parseFloat(mathSolveReward),
+        mathSolveDailyLimit: isNaN(parseInt(mathSolveDailyLimit)) ? 10 : parseInt(mathSolveDailyLimit),
+        quizReward: isNaN(parseFloat(quizReward)) ? 1.0 : parseFloat(quizReward),
+        quizDailyLimit: isNaN(parseInt(quizDailyLimit)) ? 10 : parseInt(quizDailyLimit),
+        hideMathSolve: hideMathSolve,
+        hideQuiz: hideQuiz,
         siteMaintenanceEnabled: siteMaintenanceEnabled,
         siteMaintenanceMessage: siteMaintenanceMessage.trim(),
         freeActivationEnabled: freeActivationEnabled,
@@ -5258,6 +5307,101 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                         </label>
                       </div>
 
+                      {/* Hide Services options */}
+                      <div className="pt-2 border-t border-slate-850 bg-slate-900/40 p-3 rounded-2xl border border-slate-800 space-y-3.5">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-300 font-extrabold flex items-center gap-1.5">🙈 সেবা হাইড অপশন (Hide Our Services)</span>
+                          <span className="text-[7.5px] text-slate-400">যে কোনো অপশন সচল করলে তা ইউজার অ্যাপের "আমাদের সেবাসমূহ" গ্রিড থেকে হাইড হয়ে যাবে</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {/* Gmail */}
+                          <div className="flex items-center justify-between bg-slate-950 p-1.5 rounded-lg border border-slate-850">
+                            <span className="text-[8.5px] text-slate-300 font-extrabold">📧 Gmail Sell হাইড?</span>
+                            <label className="relative inline-flex items-center cursor-pointer font-sans">
+                              <input 
+                                type="checkbox" 
+                                checked={hideGmailSell} 
+                                onChange={(e) => setHideGmailSell(e.target.checked)} 
+                                className="sr-only"
+                              />
+                              <div className={`w-8 h-4 rounded-full transition-colors relative mr-1.5 ${hideGmailSell ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+                                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${hideGmailSell ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </div>
+                              <span className="text-[8px] font-bold text-slate-400">{hideGmailSell ? 'হাইড' : 'শো'}</span>
+                            </label>
+                          </div>
+
+                          {/* Telegram */}
+                          <div className="flex items-center justify-between bg-slate-950 p-1.5 rounded-lg border border-slate-850">
+                            <span className="text-[8.5px] text-slate-300 font-extrabold">✈️ Telegram Sell হাইড?</span>
+                            <label className="relative inline-flex items-center cursor-pointer font-sans">
+                              <input 
+                                type="checkbox" 
+                                checked={hideTelegramSell} 
+                                onChange={(e) => setHideTelegramSell(e.target.checked)} 
+                                className="sr-only"
+                              />
+                              <div className={`w-8 h-4 rounded-full transition-colors relative mr-1.5 ${hideTelegramSell ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+                                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${hideTelegramSell ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </div>
+                              <span className="text-[8px] font-bold text-slate-400">{hideTelegramSell ? 'হাইড' : 'শো'}</span>
+                            </label>
+                          </div>
+
+                          {/* WhatsApp */}
+                          <div className="flex items-center justify-between bg-slate-950 p-1.5 rounded-lg border border-slate-850">
+                            <span className="text-[8.5px] text-slate-300 font-extrabold">💬 WhatsApp Sell হাইড?</span>
+                            <label className="relative inline-flex items-center cursor-pointer font-sans">
+                              <input 
+                                type="checkbox" 
+                                checked={hideWhatsappSell} 
+                                onChange={(e) => setHideWhatsappSell(e.target.checked)} 
+                                className="sr-only"
+                              />
+                              <div className={`w-8 h-4 rounded-full transition-colors relative mr-1.5 ${hideWhatsappSell ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+                                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${hideWhatsappSell ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </div>
+                              <span className="text-[8px] font-bold text-slate-400">{hideWhatsappSell ? 'হাইড' : 'শো'}</span>
+                            </label>
+                          </div>
+
+                          {/* Facebook */}
+                          <div className="flex items-center justify-between bg-slate-950 p-1.5 rounded-lg border border-slate-850">
+                            <span className="text-[8.5px] text-slate-300 font-extrabold">👤 Facebook Sell হাইড?</span>
+                            <label className="relative inline-flex items-center cursor-pointer font-sans">
+                              <input 
+                                type="checkbox" 
+                                checked={hideFacebookSell} 
+                                onChange={(e) => setHideFacebookSell(e.target.checked)} 
+                                className="sr-only"
+                              />
+                              <div className={`w-8 h-4 rounded-full transition-colors relative mr-1.5 ${hideFacebookSell ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+                                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${hideFacebookSell ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </div>
+                              <span className="text-[8px] font-bold text-slate-400">{hideFacebookSell ? 'হাইড' : 'শো'}</span>
+                            </label>
+                          </div>
+
+                          {/* Instagram */}
+                          <div className="flex items-center justify-between bg-slate-950 p-1.5 rounded-lg border border-slate-850">
+                            <span className="text-[8.5px] text-slate-300 font-extrabold">📸 Instagram Sell হাইড?</span>
+                            <label className="relative inline-flex items-center cursor-pointer font-sans">
+                              <input 
+                                type="checkbox" 
+                                checked={hideInstagramSell} 
+                                onChange={(e) => setHideInstagramSell(e.target.checked)} 
+                                className="sr-only"
+                              />
+                              <div className={`w-8 h-4 rounded-full transition-colors relative mr-1.5 ${hideInstagramSell ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+                                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${hideInstagramSell ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </div>
+                              <span className="text-[8px] font-bold text-slate-400">{hideInstagramSell ? 'হাইড' : 'শো'}</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Full Site Maintenance state */}
                       <div className="pt-2 border-t border-slate-850 flex flex-col gap-1.5 bg-amber-950/20 p-2 rounded-xl border border-amber-900/30">
                         <div className="flex justify-between items-center">
@@ -5320,6 +5464,117 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           placeholder="যেমন: ১০ বা ২০"
                           className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs outline-none text-white focus:border-emerald-500 font-sans font-bold"
                         />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 9.6: রেফার বোনাস সেটিংস */}
+                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <span className="text-[10px] text-purple-400 font-black tracking-wider uppercase block mb-1">রেফার বোনাস সেটিংস</span>
+                    <p className="text-slate-500 text-[9px] leading-relaxed mb-2.5">ইউজার অ্যাকাউন্ট একটিভেট করার সময় রেফারারকে দেওয়া বোনাসের পরিমাণ পরিবর্তন করুন।</p>
+                    
+                    <div className="space-y-2.5">
+                      <div className="space-y-1">
+                        <label className="text-slate-400 text-[10px] font-bold">রেফার বোনাস অ্যামাউন্ট (৳)</label>
+                        <input 
+                          type="number" 
+                          value={referBonusAmount}
+                          onChange={(e) => setReferBonusAmount(e.target.value)}
+                          placeholder="যেমন: ১০"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs outline-none text-white focus:border-purple-500 font-sans font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 9.7: ম্যাথ সলভ ও কুইজ সেটিংস */}
+                <div className="bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl space-y-3 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <span className="text-[10px] text-amber-400 font-black tracking-wider uppercase block mb-1">ম্যান্ট সলভ ও কুইজ সেটিংস</span>
+                    <p className="text-slate-500 text-[9px] leading-relaxed mb-3">আমাদের সেবাসমূহে ম্যাথ সলভ এবং কুইজ গেম খেলে আয় করার রিওয়ার্ড ও দৈনিক লিমিট ঠিক করুন।</p>
+                    
+                    <div className="space-y-3">
+                      {/* Math Solve Config */}
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-amber-300 font-extrabold">🧮 Math Solve (ম্যাথ সলভ)</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={hideMathSolve} 
+                              onChange={(e) => setHideMathSolve(e.target.checked)} 
+                              className="sr-only"
+                            />
+                            <div className={`w-7 h-3.5 rounded-full transition-colors relative mr-1.5 ${hideMathSolve ? 'bg-rose-600' : 'bg-emerald-600'}`}>
+                              <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full transition-transform ${hideMathSolve ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                            </div>
+                            <span className="text-[7.5px] font-bold text-slate-400">{hideMathSolve ? 'হাইড' : 'শো'}</span>
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <label className="text-slate-400 text-[8px] font-bold">রিওয়ার্ড (৳)</label>
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              value={mathSolveReward}
+                              onChange={(e) => setMathSolveReward(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-amber-500 font-mono font-bold"
+                            />
+                          </div>
+                          <div className="space-y-0.5">
+                            <label className="text-slate-400 text-[8px] font-bold">দৈনিক লিমিট</label>
+                            <input 
+                              type="number" 
+                              value={mathSolveDailyLimit}
+                              onChange={(e) => setMathSolveDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-amber-500 font-mono font-bold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quiz Config */}
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-cyan-300 font-extrabold">🧠 Quiz Play (কুইজ খেলুন)</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={hideQuiz} 
+                              onChange={(e) => setHideQuiz(e.target.checked)} 
+                              className="sr-only"
+                            />
+                            <div className={`w-7 h-3.5 rounded-full transition-colors relative mr-1.5 ${hideQuiz ? 'bg-rose-600' : 'bg-emerald-600'}`}>
+                              <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full transition-transform ${hideQuiz ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                            </div>
+                            <span className="text-[7.5px] font-bold text-slate-400">{hideQuiz ? 'হাইড' : 'শো'}</span>
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <label className="text-slate-400 text-[8px] font-bold">রিওয়ার্ড (৳)</label>
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              value={quizReward}
+                              onChange={(e) => setQuizReward(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-cyan-500 font-mono font-bold"
+                            />
+                          </div>
+                          <div className="space-y-0.5">
+                            <label className="text-slate-400 text-[8px] font-bold">দৈনিক লিমিট</label>
+                            <input 
+                              type="number" 
+                              value={quizDailyLimit}
+                              onChange={(e) => setQuizDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-cyan-500 font-mono font-bold"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -27,6 +27,10 @@ export interface UserData {
   dailyAdsterraCount?: number;
   lastScratchDate?: string;
   dailyScratchCount?: number;
+  lastMathSolveDate?: string;
+  dailyMathSolveCount?: number;
+  lastQuizPlayDate?: string;
+  dailyQuizPlayCount?: number;
   birth?: string;
   job?: string;
   location?: string;
@@ -302,6 +306,18 @@ export interface GlobalSettings {
   scratchRewards?: string;
   scratchMaintenanceEnabled?: boolean;
   scratchMaintenanceMessage?: string;
+  hideGmailSell?: boolean;
+  hideTelegramSell?: boolean;
+  hideWhatsappSell?: boolean;
+  hideFacebookSell?: boolean;
+  hideInstagramSell?: boolean;
+  referBonusAmount?: number;
+  mathSolveReward?: number;
+  mathSolveDailyLimit?: number;
+  quizReward?: number;
+  quizDailyLimit?: number;
+  hideMathSolve?: boolean;
+  hideQuiz?: boolean;
 }
 
 export interface ExternalWebsite {

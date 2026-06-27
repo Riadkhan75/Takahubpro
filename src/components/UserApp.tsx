@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ScratchCardGame from './ScratchCardGame';
 import Leaderboard from './Leaderboard';
+import MathSolveGame from './MathSolveGame';
+import QuizPlayGame from './QuizPlayGame';
 import { 
   auth, 
   db 
@@ -1102,6 +1104,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
       const data = snapshot.val();
       if (data) {
         setGlobalSettings({
+          ...data,
           minWithdraw: data.minWithdraw || 50,
           minWithdrawGmail: data.minWithdrawGmail || 50,
           minWithdrawTelegram: data.minWithdrawTelegram || 50,
@@ -4103,118 +4106,166 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 select-none">
                 {/* 1. Combined Account Sell Card (Full Width in Grid) */}
-                <div className="col-span-3 sm:col-span-4 bg-gradient-to-br from-[#764ba2]/5 via-indigo-50/20 to-purple-50/30 border border-[#764ba2]/15 rounded-[28px] p-4.5 space-y-3.5 shadow-3xs">
-                  <div className="flex justify-between items-center px-1">
-                    <div className="space-y-0.5">
-                      <h3 className="font-extrabold text-stone-850 text-xs sm:text-[13px] font-sans flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 bg-[#764ba2] rounded-full animate-pulse"></span>
-                        সোশ্যাল একাউন্ট বিক্রি করুন (Social Account Sell)
-                      </h3>
-                      <p className="text-[10px] text-stone-500 font-bold font-sans">১০০% বিশ্বস্ততা ও অটোমেটিক ইনস্ট্যান্ট পেমেন্ট সুবিধা</p>
+                {([
+                  !globalSettings.hideGmailSell,
+                  !globalSettings.hideTelegramSell,
+                  !globalSettings.hideWhatsappSell,
+                  !globalSettings.hideFacebookSell,
+                  !globalSettings.hideInstagramSell
+                ].filter(Boolean).length > 0) && (
+                  <div className="col-span-3 sm:col-span-4 bg-gradient-to-br from-[#764ba2]/5 via-indigo-50/20 to-purple-50/30 border border-[#764ba2]/15 rounded-[28px] p-4.5 space-y-3.5 shadow-3xs">
+                    <div className="flex justify-between items-center px-1">
+                      <div className="space-y-0.5">
+                        <h3 className="font-extrabold text-stone-850 text-xs sm:text-[13px] font-sans flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 bg-[#764ba2] rounded-full animate-pulse"></span>
+                          সোশ্যাল একাউন্ট বিক্রি করুন (Social Account Sell)
+                        </h3>
+                        <p className="text-[10px] text-stone-500 font-bold font-sans">১০০% বিশ্বস্ততা ও অটোমেটিক ইনস্ট্যান্ট পেমেন্ট সুবিধা</p>
+                      </div>
+                      <span className="text-[9px] bg-[#764ba2]/15 text-[#764ba2] px-2 py-0.5 rounded-full font-black uppercase tracking-wider font-mono">HOT SERVICE</span>
                     </div>
-                    <span className="text-[9px] bg-[#764ba2]/15 text-[#764ba2] px-2 py-0.5 rounded-full font-black uppercase tracking-wider font-mono">HOT SERVICE</span>
+
+                    <div className={`grid gap-1.5 sm:gap-2 ${
+                      [
+                        !globalSettings.hideGmailSell,
+                        !globalSettings.hideTelegramSell,
+                        !globalSettings.hideWhatsappSell,
+                        !globalSettings.hideFacebookSell,
+                        !globalSettings.hideInstagramSell
+                      ].filter(Boolean).length === 5 ? 'grid-cols-5' :
+                      [
+                        !globalSettings.hideGmailSell,
+                        !globalSettings.hideTelegramSell,
+                        !globalSettings.hideWhatsappSell,
+                        !globalSettings.hideFacebookSell,
+                        !globalSettings.hideInstagramSell
+                      ].filter(Boolean).length === 4 ? 'grid-cols-4' :
+                      [
+                        !globalSettings.hideGmailSell,
+                        !globalSettings.hideTelegramSell,
+                        !globalSettings.hideWhatsappSell,
+                        !globalSettings.hideFacebookSell,
+                        !globalSettings.hideInstagramSell
+                      ].filter(Boolean).length === 3 ? 'grid-cols-3' :
+                      [
+                        !globalSettings.hideGmailSell,
+                        !globalSettings.hideTelegramSell,
+                        !globalSettings.hideWhatsappSell,
+                        !globalSettings.hideFacebookSell,
+                        !globalSettings.hideInstagramSell
+                      ].filter(Boolean).length === 2 ? 'grid-cols-2' :
+                      'grid-cols-1'
+                    }`}>
+                      {/* Gmail Sell */}
+                      {!globalSettings.hideGmailSell && (
+                        <div 
+                          onClick={() => switchTab('gmail-sell')}
+                          className="bg-white hover:bg-rose-50 border border-stone-200/60 hover:border-rose-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center relative">
+                            <div className="absolute inset-0 bg-rose-500/10 rounded-xl blur-3xs"></div>
+                            <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                              <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" fill="#EA4335" />
+                              <path d="M22 6l-10 7L2 6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Gmail</span>
+                            <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.gmailPrice || 5.0}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Telegram Sell */}
+                      {!globalSettings.hideTelegramSell && (
+                        <div 
+                          onClick={() => switchTab('telegram-sell')}
+                          className="bg-white hover:bg-sky-50 border border-stone-200/60 hover:border-sky-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center relative">
+                            <div className="absolute inset-0 bg-sky-500/10 rounded-xl blur-3xs"></div>
+                            <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                              <rect width="24" height="24" rx="6" fill="#229ED9" />
+                              <path d="M18.8 6.4c-.1-.1-.3-.1-.4 0l-13.6 5.2c-.3.1-.3.5 0 .6l3.1 1 7.2-4.5c.1-.1.2.1.1.2l-5.8 5.3-.2 2.6c0 .3.4.4.6.1l1.7-1.6 3.4 2.5c.2.1.5 0 .6-.2l3.4-11c0-.1 0-.2-.1-.2z" fill="#fff" />
+                            </svg>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Telegram</span>
+                            <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.telegramPrice || 20}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* WhatsApp Sell */}
+                      {!globalSettings.hideWhatsappSell && (
+                        <div 
+                          onClick={() => switchTab('whatsapp-sell')}
+                          className="bg-white hover:bg-emerald-50 border border-stone-200/60 hover:border-emerald-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center relative">
+                            <div className="absolute inset-0 bg-emerald-500/10 rounded-xl blur-3xs"></div>
+                            <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                              <rect width="24" height="24" rx="6" fill="#25D366" />
+                              <path d="M12.01 5c-3.86 0-7 3.14-7 7 0 1.42.42 2.74 1.14 3.86l-.75 2.25 2.33-.73c1.07.65 2.3 1.02 3.63 1.02 3.86 0 7-3.14 7-7s-3.14-7-7-7zm2.4 9.17c-.15.42-.77.78-1.2.83-.37.05-.85-.14-2.43-.79-1.92-.79-3.16-2.75-3.26-2.88-.1-.13-.78-1.04-.78-1.98 0-.94.49-1.4 1.34-1.4.19 0 .34.01.46.01.12 0 .28-.05.44.34.16.39.56 1.37.61 1.47.05.1.08.22.01.35-.07.13-.19.28-.3.4l-.18.15c-.1.1-.21.21-.09.4.52.88 1.29 1.58 2.2 1.94.13.05.25.07.35-.05.12-.15.52-.61.66-.82.14-.2.28-.17.47-.1.19.07 1.2.56 1.4.67.21.11.35.16.4.25.05.09.05.52-.1.94z" fill="#fff" />
+                            </svg>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">WhatsApp</span>
+                            <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.whatsappPrice || 35}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Facebook Sell */}
+                      {!globalSettings.hideFacebookSell && (
+                        <div 
+                          onClick={() => switchTab('facebook-sell')}
+                          className="bg-white hover:bg-blue-50 border border-stone-200/60 hover:border-blue-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center relative">
+                            <div className="absolute inset-0 bg-blue-600/10 rounded-xl blur-3xs"></div>
+                            <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
+                            </svg>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Facebook</span>
+                            <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.facebookPrice || 25}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Instagram Sell */}
+                      {!globalSettings.hideInstagramSell && (
+                        <div 
+                          onClick={() => switchTab('instagram-sell')}
+                          className="bg-white hover:bg-pink-50 border border-stone-200/60 hover:border-pink-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center relative overflow-hidden rounded-xl">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-[#fdf497] via-[#fd5949] to-[#d6249f] opacity-15"></div>
+                            <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                              <defs>
+                                <radialGradient id="ig-grad-seba-card" cx="30%" cy="107%" r="130%">
+                                  <stop offset="0%" stopColor="#fdf497" />
+                                  <stop offset="5%" stopColor="#fdf497" />
+                                  <stop offset="45%" stopColor="#fd5949" />
+                                  <stop offset="60%" stopColor="#d6249f" />
+                                  <stop offset="100%" stopColor="#285AEB" />
+                                </radialGradient>
+                              </defs>
+                              <rect width="24" height="24" rx="6" fill="url(#ig-grad-seba-card)" />
+                              <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8.2c-1.77 0-3.2-1.43-3.2-3.2s1.43-3.2 3.2-3.2 3.2 1.43 3.2 3.2-1.43 3.2-3.2 3.2zm5.3-8.82c0-.64.52-1.16 1.16-1.16s1.16.52 1.16 1.16-.52 1.16-1.16 1.16-1.16-.52-1.16-1.16z" fill="#fff" />
+                            </svg>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Instagram</span>
+                            <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.instagramPrice || 20}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-                    {/* Gmail Sell */}
-                    <div 
-                      onClick={() => switchTab('gmail-sell')}
-                      className="bg-white hover:bg-rose-50 border border-stone-200/60 hover:border-rose-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center relative">
-                        <div className="absolute inset-0 bg-rose-500/10 rounded-xl blur-3xs"></div>
-                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
-                          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" fill="#EA4335" />
-                          <path d="M22 6l-10 7L2 6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Gmail</span>
-                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.gmailPrice || 5.0}</span>
-                      </div>
-                    </div>
-
-                    {/* Telegram Sell */}
-                    <div 
-                      onClick={() => switchTab('telegram-sell')}
-                      className="bg-white hover:bg-sky-50 border border-stone-200/60 hover:border-sky-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center relative">
-                        <div className="absolute inset-0 bg-sky-500/10 rounded-xl blur-3xs"></div>
-                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
-                          <rect width="24" height="24" rx="6" fill="#229ED9" />
-                          <path d="M18.8 6.4c-.1-.1-.3-.1-.4 0l-13.6 5.2c-.3.1-.3.5 0 .6l3.1 1 7.2-4.5c.1-.1.2.1.1.2l-5.8 5.3-.2 2.6c0 .3.4.4.6.1l1.7-1.6 3.4 2.5c.2.1.5 0 .6-.2l3.4-11c0-.1 0-.2-.1-.2z" fill="#fff" />
-                        </svg>
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Telegram</span>
-                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.telegramPrice || 20}</span>
-                      </div>
-                    </div>
-
-                    {/* WhatsApp Sell */}
-                    <div 
-                      onClick={() => switchTab('whatsapp-sell')}
-                      className="bg-white hover:bg-emerald-50 border border-stone-200/60 hover:border-emerald-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center relative">
-                        <div className="absolute inset-0 bg-emerald-500/10 rounded-xl blur-3xs"></div>
-                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
-                          <rect width="24" height="24" rx="6" fill="#25D366" />
-                          <path d="M12.01 5c-3.86 0-7 3.14-7 7 0 1.42.42 2.74 1.14 3.86l-.75 2.25 2.33-.73c1.07.65 2.3 1.02 3.63 1.02 3.86 0 7-3.14 7-7s-3.14-7-7-7zm2.4 9.17c-.15.42-.77.78-1.2.83-.37.05-.85-.14-2.43-.79-1.92-.79-3.16-2.75-3.26-2.88-.1-.13-.78-1.04-.78-1.98 0-.94.49-1.4 1.34-1.4.19 0 .34.01.46.01.12 0 .28-.05.44.34.16.39.56 1.37.61 1.47.05.1.08.22.01.35-.07.13-.19.28-.3.4l-.18.15c-.1.1-.21.21-.09.4.52.88 1.29 1.58 2.2 1.94.13.05.25.07.35-.05.12-.15.52-.61.66-.82.14-.2.28-.17.47-.1.19.07 1.2.56 1.4.67.21.11.35.16.4.25.05.09.05.52-.1.94z" fill="#fff" />
-                        </svg>
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">WhatsApp</span>
-                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.whatsappPrice || 35}</span>
-                      </div>
-                    </div>
-
-                    {/* Facebook Sell */}
-                    <div 
-                      onClick={() => switchTab('facebook-sell')}
-                      className="bg-white hover:bg-blue-50 border border-stone-200/60 hover:border-blue-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center relative">
-                        <div className="absolute inset-0 bg-blue-600/10 rounded-xl blur-3xs"></div>
-                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
-                        </svg>
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Facebook</span>
-                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.facebookPrice || 25}</span>
-                      </div>
-                    </div>
-
-                    {/* Instagram Sell */}
-                    <div 
-                      onClick={() => switchTab('instagram-sell')}
-                      className="bg-white hover:bg-pink-50 border border-stone-200/60 hover:border-pink-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center relative overflow-hidden rounded-xl">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[#fdf497] via-[#fd5949] to-[#d6249f] opacity-15"></div>
-                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
-                          <defs>
-                            <radialGradient id="ig-grad-seba-card" cx="30%" cy="107%" r="130%">
-                              <stop offset="0%" stopColor="#fdf497" />
-                              <stop offset="5%" stopColor="#fdf497" />
-                              <stop offset="45%" stopColor="#fd5949" />
-                              <stop offset="60%" stopColor="#d6249f" />
-                              <stop offset="100%" stopColor="#285AEB" />
-                            </radialGradient>
-                          </defs>
-                          <rect width="24" height="24" rx="6" fill="url(#ig-grad-seba-card)" />
-                          <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8.2c-1.77 0-3.2-1.43-3.2-3.2s1.43-3.2 3.2-3.2 3.2 1.43 3.2 3.2-1.43 3.2-3.2 3.2zm5.3-8.82c0-.64.52-1.16 1.16-1.16s1.16.52 1.16 1.16-.52 1.16-1.16 1.16-1.16-.52-1.16-1.16z" fill="#fff" />
-                        </svg>
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Instagram</span>
-                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.instagramPrice || 20}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 {/* 6. Micro Job */}
                 <div 
@@ -4311,6 +4362,52 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   </div>
                 </div>
 
+                {/* 9c. Math Solve Game */}
+                {!globalSettings.hideMathSolve && (
+                  <div 
+                    onClick={() => switchTab('math-solve')}
+                    className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                  >
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="w-12 h-12 flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-amber-500/10 rounded-2xl blur-xs"></div>
+                        <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                          <svg className="w-5 h-5 stroke-[2.5px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Math Solve</span>
+                      <span className="text-[8.5px] text-amber-600 font-black leading-none block">৳{(globalSettings.mathSolveReward ?? 1).toFixed(1)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 9d. Quiz Play Game */}
+                {!globalSettings.hideQuiz && (
+                  <div 
+                    onClick={() => switchTab('quiz-play')}
+                    className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                  >
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="w-12 h-12 flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-cyan-500/10 rounded-2xl blur-xs"></div>
+                        <div className="w-10 h-10 bg-cyan-550 rounded-xl flex items-center justify-center text-white shadow-xs">
+                          <svg className="w-5 h-5 stroke-[2.5px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Quiz Play</span>
+                      <span className="text-[8.5px] text-cyan-600 font-black leading-none block">৳{(globalSettings.quizReward ?? 1).toFixed(1)}</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* 10. Investment Plans */}
                 <div 
                   onClick={() => switchTab('investment-plans')}
@@ -4345,7 +4442,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   </div>
                   <div className="space-y-0.5">
                     <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Refer</span>
-                    <span className="text-[8.5px] text-[#764ba2] font-black leading-none block">৳১০ বোনাস</span>
+                    <span className="text-[8.5px] text-[#764ba2] font-black leading-none block">৳{globalSettings.referBonusAmount !== undefined ? globalSettings.referBonusAmount : 10} বোনাস</span>
                   </div>
                 </div>
 
@@ -6649,6 +6746,76 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             ) : (
               userData && (
                 <ScratchCardGame 
+                  userId={userId}
+                  userData={userData}
+                  globalSettings={globalSettings}
+                  onBalanceUpdate={() => {}}
+                  addLiveToast={addLiveToast}
+                />
+              )
+            )}
+          </motion.div>
+        )}
+        {activeTab === 'math-solve' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-base font-extrabold text-stone-800">ম্যাথ সলভ গেম</h2>
+              <button 
+                onClick={() => switchTab('home')}
+                className="text-stone-500 hover:text-[#764ba2] text-xs font-bold transition flex items-center gap-1 bg-white border border-stone-200 px-3 py-1.5 rounded-xl shadow-2xs cursor-pointer"
+              >
+                হোমে ফিরুন
+              </button>
+            </div>
+
+            {globalSettings.hideMathSolve ? (
+              <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4 w-full">
+                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
+                  <AlertCircle size={28} />
+                </div>
+                <h3 className="font-extrabold text-stone-850 text-base">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h3>
+                <p className="text-[#e11d48] text-xs text-center font-medium bg-rose-50 border border-rose-200/55 p-4 rounded-xl max-w-sm leading-relaxed">
+                  সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ম্যাথ সলভ গেমটি বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।
+                </p>
+              </div>
+            ) : (
+              userData && (
+                <MathSolveGame 
+                  userId={userId}
+                  userData={userData}
+                  globalSettings={globalSettings}
+                  onBalanceUpdate={() => {}}
+                  addLiveToast={addLiveToast}
+                />
+              )
+            )}
+          </motion.div>
+        )}
+        {activeTab === 'quiz-play' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-base font-extrabold text-stone-800">দৈনিক কুইজ খেলুন</h2>
+              <button 
+                onClick={() => switchTab('home')}
+                className="text-stone-500 hover:text-[#764ba2] text-xs font-bold transition flex items-center gap-1 bg-white border border-stone-200 px-3 py-1.5 rounded-xl shadow-2xs cursor-pointer"
+              >
+                হোমে ফিরুন
+              </button>
+            </div>
+
+            {globalSettings.hideQuiz ? (
+              <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4 w-full">
+                <div className="w-16 h-16 bg-cyan-50 text-cyan-600 rounded-full flex items-center justify-center shadow-xs">
+                  <AlertCircle size={28} />
+                </div>
+                <h3 className="font-extrabold text-stone-850 text-base">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h3>
+                <p className="text-[#e11d48] text-xs text-center font-medium bg-rose-50 border border-rose-200/55 p-4 rounded-xl max-w-sm leading-relaxed">
+                  সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের কুইজ গেমটি বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।
+                </p>
+              </div>
+            ) : (
+              userData && (
+                <QuizPlayGame 
                   userId={userId}
                   userData={userData}
                   globalSettings={globalSettings}
