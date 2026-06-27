@@ -42,6 +42,7 @@ import {
   ArrowDown,
   ArrowUp,
   Gift, 
+  Download,
   Home, 
   FileText, 
   PlusCircle, 
@@ -700,7 +701,7 @@ interface UserAppProps {
 }
 
 export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, isAdminUser, onSwitchToNovaShop }: UserAppProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'spin' | 'scratch' | 'investment-plans' | 'profile' | 'deposit' | 'leaderboard' | 'gift-code'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'spin' | 'scratch' | 'investment-plans' | 'profile' | 'deposit' | 'leaderboard' | 'gift-code' | 'install-app'>('home');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
@@ -800,6 +801,34 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const [giftCodeError, setGiftCodeError] = useState<string | null>(null);
   const [giftCodeSuccess, setGiftCodeSuccess] = useState<string | null>(null);
   const [giftCodeSubmitting, setGiftCodeSubmitting] = useState(false);
+
+  // PWA Install Prompt States
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
+      setIsAppInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   // Drawer / Side menu state
   const [isSidelineOpen, setIsSidelineOpen] = useState(false);
@@ -3678,9 +3707,12 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         <button onClick={() => setIsSidelineOpen(true)} className="p-1 cursor-pointer transition text-stone-700 hover:text-stone-900 shrink-0">
           <Menu size={24} />
         </button>
-        <span className="text-xl font-bold bg-[#764ba2] bg-clip-text text-transparent tracking-wide font-sans">
-          𝗧ᴀᴋᴀ𝗛ᴜʙ 𝗣ʀᴏ
-        </span>
+        <div className="flex items-center gap-1.5">
+          <img src="/app_logo.jpg" alt="Logo" className="w-6.5 h-6.5 rounded-lg object-cover shadow-xs border border-stone-150" />
+          <span className="text-xl font-black bg-[#764ba2] bg-clip-text text-transparent tracking-wide font-sans">
+            𝗧ᴀᴋᴀ𝗛ᴜʙ 𝗣ʀᴏ
+          </span>
+        </div>
         <div className="flex items-center gap-2 shrink-0">
           <button 
             onClick={() => switchTab('notifications')}
@@ -4059,117 +4091,128 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
 
             {/* AMADER SEBASUMUH GRID SECTION EXACTLY MATCHING THE MOCKUP */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 px-1 mt-5">
-                <div className="w-[6px] h-[22px] bg-blue-600 rounded-full"></div>
-                <h2 className="text-base font-black text-slate-800 tracking-tight font-sans">আমাদের সেবাসমূহ</h2>
+              <div className="px-1 mt-5 space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-[6px] h-[22px] bg-[#764ba2] rounded-full"></div>
+                  <h2 className="text-base sm:text-lg font-black text-slate-800 tracking-tight font-sans">আমাদের সেবাসমূহ (Our Services)</h2>
+                </div>
+                <p className="text-[11px] sm:text-xs text-stone-500 font-extrabold pl-3.5 font-sans leading-relaxed">
+                  আপনার কাঙ্খিত সেবাটি বেছে নিন এবং বিশ্বস্ততার সাথে অনলাইন থেকে নিশ্চিত আর্নিং শুরু করুন।
+                </p>
               </div>
 
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 select-none">
-                {/* 1. Gmail Sell */}
-                <div 
-                  onClick={() => switchTab('gmail-sell')}
-                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
-                >
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="w-12 h-12 flex items-center justify-center relative">
-                      <div className="absolute inset-0 bg-rose-500/10 rounded-2xl blur-xs"></div>
-                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
-                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" fill="#EA4335" />
-                        <path d="M22 6l-10 7L2 6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                {/* 1. Combined Account Sell Card (Full Width in Grid) */}
+                <div className="col-span-3 sm:col-span-4 bg-gradient-to-br from-[#764ba2]/5 via-indigo-50/20 to-purple-50/30 border border-[#764ba2]/15 rounded-[28px] p-4.5 space-y-3.5 shadow-3xs">
+                  <div className="flex justify-between items-center px-1">
+                    <div className="space-y-0.5">
+                      <h3 className="font-extrabold text-stone-850 text-xs sm:text-[13px] font-sans flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 bg-[#764ba2] rounded-full animate-pulse"></span>
+                        সোশ্যাল একাউন্ট বিক্রি করুন (Social Account Sell)
+                      </h3>
+                      <p className="text-[10px] text-stone-500 font-bold font-sans">১০০% বিশ্বস্ততা ও অটোমেটিক ইনস্ট্যান্ট পেমেন্ট সুবিধা</p>
                     </div>
+                    <span className="text-[9px] bg-[#764ba2]/15 text-[#764ba2] px-2 py-0.5 rounded-full font-black uppercase tracking-wider font-mono">HOT SERVICE</span>
                   </div>
-                  <div className="space-y-0.5">
-                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Gmail Sell</span>
-                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.gmailPrice || 5.0}</span>
-                  </div>
-                </div>
 
-                {/* 2. Facebook Sell */}
-                <div 
-                  onClick={() => switchTab('facebook-sell')}
-                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
-                >
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="w-12 h-12 flex items-center justify-center relative">
-                      <div className="absolute inset-0 bg-blue-600/10 rounded-2xl blur-xs"></div>
-                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
-                      </svg>
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                    {/* Gmail Sell */}
+                    <div 
+                      onClick={() => switchTab('gmail-sell')}
+                      className="bg-white hover:bg-rose-50 border border-stone-200/60 hover:border-rose-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-rose-500/10 rounded-xl blur-3xs"></div>
+                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" fill="#EA4335" />
+                          <path d="M22 6l-10 7L2 6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Gmail</span>
+                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.gmailPrice || 5.0}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Facebook</span>
-                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.facebookPrice || 25}</span>
-                  </div>
-                </div>
 
-                {/* 3. Instagram Sell */}
-                <div 
-                  onClick={() => switchTab('instagram-sell')}
-                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
-                >
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="w-12 h-12 flex items-center justify-center relative overflow-hidden rounded-2xl">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-[#fdf497] via-[#fd5949] to-[#d6249f] opacity-15"></div>
-                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
-                        <defs>
-                          <radialGradient id="ig-grad-seba" cx="30%" cy="107%" r="130%">
-                            <stop offset="0%" stopColor="#fdf497" />
-                            <stop offset="5%" stopColor="#fdf497" />
-                            <stop offset="45%" stopColor="#fd5949" />
-                            <stop offset="60%" stopColor="#d6249f" />
-                            <stop offset="100%" stopColor="#285AEB" />
-                          </radialGradient>
-                        </defs>
-                        <rect width="24" height="24" rx="6" fill="url(#ig-grad-seba)" />
-                        <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8.2c-1.77 0-3.2-1.43-3.2-3.2s1.43-3.2 3.2-3.2 3.2 1.43 3.2 3.2-1.43 3.2-3.2 3.2zm5.3-8.82c0-.64.52-1.16 1.16-1.16s1.16.52 1.16 1.16-.52 1.16-1.16 1.16-1.16-.52-1.16-1.16z" fill="#fff" />
-                      </svg>
+                    {/* Telegram Sell */}
+                    <div 
+                      onClick={() => switchTab('telegram-sell')}
+                      className="bg-white hover:bg-sky-50 border border-stone-200/60 hover:border-sky-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-sky-500/10 rounded-xl blur-3xs"></div>
+                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                          <rect width="24" height="24" rx="6" fill="#229ED9" />
+                          <path d="M18.8 6.4c-.1-.1-.3-.1-.4 0l-13.6 5.2c-.3.1-.3.5 0 .6l3.1 1 7.2-4.5c.1-.1.2.1.1.2l-5.8 5.3-.2 2.6c0 .3.4.4.6.1l1.7-1.6 3.4 2.5c.2.1.5 0 .6-.2l3.4-11c0-.1 0-.2-.1-.2z" fill="#fff" />
+                        </svg>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Telegram</span>
+                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.telegramPrice || 20}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Instagram</span>
-                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.instagramPrice || 20}</span>
-                  </div>
-                </div>
 
-                {/* 4. Telegram Sell */}
-                <div 
-                  onClick={() => switchTab('telegram-sell')}
-                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
-                >
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="w-12 h-12 flex items-center justify-center relative overflow-hidden rounded-2xl">
-                      <div className="absolute inset-0 bg-sky-500/10 rounded-2xl blur-xs"></div>
-                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
-                        <rect width="24" height="24" rx="6" fill="#229ED9" />
-                        <path d="M18.8 6.4c-.1-.1-.3-.1-.4 0l-13.6 5.2c-.3.1-.3.5 0 .6l3.1 1 7.2-4.5c.1-.1.2.1.1.2l-5.8 5.3-.2 2.6c0 .3.4.4.6.1l1.7-1.6 3.4 2.5c.2.1.5 0 .6-.2l3.4-11c0-.1 0-.2-.1-.2z" fill="#fff" />
-                      </svg>
+                    {/* WhatsApp Sell */}
+                    <div 
+                      onClick={() => switchTab('whatsapp-sell')}
+                      className="bg-white hover:bg-emerald-50 border border-stone-200/60 hover:border-emerald-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-emerald-500/10 rounded-xl blur-3xs"></div>
+                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                          <rect width="24" height="24" rx="6" fill="#25D366" />
+                          <path d="M12.01 5c-3.86 0-7 3.14-7 7 0 1.42.42 2.74 1.14 3.86l-.75 2.25 2.33-.73c1.07.65 2.3 1.02 3.63 1.02 3.86 0 7-3.14 7-7s-3.14-7-7-7zm2.4 9.17c-.15.42-.77.78-1.2.83-.37.05-.85-.14-2.43-.79-1.92-.79-3.16-2.75-3.26-2.88-.1-.13-.78-1.04-.78-1.98 0-.94.49-1.4 1.34-1.4.19 0 .34.01.46.01.12 0 .28-.05.44.34.16.39.56 1.37.61 1.47.05.1.08.22.01.35-.07.13-.19.28-.3.4l-.18.15c-.1.1-.21.21-.09.4.52.88 1.29 1.58 2.2 1.94.13.05.25.07.35-.05.12-.15.52-.61.66-.82.14-.2.28-.17.47-.1.19.07 1.2.56 1.4.67.21.11.35.16.4.25.05.09.05.52-.1.94z" fill="#fff" />
+                        </svg>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">WhatsApp</span>
+                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.whatsappPrice || 35}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Telegram</span>
-                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.telegramPrice || 20}</span>
-                  </div>
-                </div>
 
-                {/* 5. WhatsApp Sell */}
-                <div 
-                  onClick={() => switchTab('whatsapp-sell')}
-                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
-                >
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="w-12 h-12 flex items-center justify-center relative overflow-hidden rounded-2xl">
-                      <div className="absolute inset-0 bg-emerald-500/10 rounded-2xl blur-xs"></div>
-                      <svg className="w-8 h-8 z-10" viewBox="0 0 24 24" fill="none">
-                        <rect width="24" height="24" rx="6" fill="#25D366" />
-                        <path d="M12.01 5c-3.86 0-7 3.14-7 7 0 1.42.42 2.74 1.14 3.86l-.75 2.25 2.33-.73c1.07.65 2.3 1.02 3.63 1.02 3.86 0 7-3.14 7-7s-3.14-7-7-7zm2.4 9.17c-.15.42-.77.78-1.2.83-.37.05-.85-.14-2.43-.79-1.92-.79-3.16-2.75-3.26-2.88-.1-.13-.78-1.04-.78-1.98 0-.94.49-1.4 1.34-1.4.19 0 .34.01.46.01.12 0 .28-.05.44.34.16.39.56 1.37.61 1.47.05.1.08.22.01.35-.07.13-.19.28-.3.4l-.18.15c-.1.1-.21.21-.09.4.52.88 1.29 1.58 2.2 1.94.13.05.25.07.35-.05.12-.15.52-.61.66-.82.14-.2.28-.17.47-.1.19.07 1.2.56 1.4.67.21.11.35.16.4.25.05.09.05.52-.1.94z" fill="#fff" />
-                      </svg>
+                    {/* Facebook Sell */}
+                    <div 
+                      onClick={() => switchTab('facebook-sell')}
+                      className="bg-white hover:bg-blue-50 border border-stone-200/60 hover:border-blue-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-blue-600/10 rounded-xl blur-3xs"></div>
+                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
+                        </svg>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Facebook</span>
+                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.facebookPrice || 25}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">WhatsApp</span>
-                    <span className="text-[8.5px] text-[#764ba2] font-semibold leading-none block">৳{globalSettings.whatsappPrice || 35}</span>
+
+                    {/* Instagram Sell */}
+                    <div 
+                      onClick={() => switchTab('instagram-sell')}
+                      className="bg-white hover:bg-pink-50 border border-stone-200/60 hover:border-pink-200 rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-4xs"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center relative overflow-hidden rounded-xl">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-[#fdf497] via-[#fd5949] to-[#d6249f] opacity-15"></div>
+                        <svg className="w-5 h-5 z-10" viewBox="0 0 24 24" fill="none">
+                          <defs>
+                            <radialGradient id="ig-grad-seba-card" cx="30%" cy="107%" r="130%">
+                              <stop offset="0%" stopColor="#fdf497" />
+                              <stop offset="5%" stopColor="#fdf497" />
+                              <stop offset="45%" stopColor="#fd5949" />
+                              <stop offset="60%" stopColor="#d6249f" />
+                              <stop offset="100%" stopColor="#285AEB" />
+                            </radialGradient>
+                          </defs>
+                          <rect width="24" height="24" rx="6" fill="url(#ig-grad-seba-card)" />
+                          <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8.2c-1.77 0-3.2-1.43-3.2-3.2s1.43-3.2 3.2-3.2 3.2 1.43 3.2 3.2-1.43 3.2-3.2 3.2zm5.3-8.82c0-.64.52-1.16 1.16-1.16s1.16.52 1.16 1.16-.52 1.16-1.16 1.16-1.16-.52-1.16-1.16z" fill="#fff" />
+                        </svg>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-extrabold text-[8.5px] sm:text-[10px] text-stone-800 leading-none block">Instagram</span>
+                        <span className="text-[8px] sm:text-[9px] text-[#764ba2] font-black leading-none block">৳{globalSettings.instagramPrice || 20}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -4501,6 +4544,25 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   <div className="space-y-0.5 font-sans">
                     <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Gift Code</span>
                     <span className="text-[8.5px] text-rose-500 font-black leading-none block">গিফট কোড</span>
+                  </div>
+                </div>
+
+                {/* Install App Custom Menu button */}
+                <div 
+                  onClick={() => switchTab('install-app')}
+                  className="bg-white border border-stone-200/50 shadow-xs hover:border-stone-300 hover:shadow-xs rounded-[24px] p-3 flex flex-col items-center justify-between text-center gap-2 aspect-square cursor-pointer active:scale-95 transition-all"
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-12 h-12 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-indigo-500/10 rounded-2xl blur-xs"></div>
+                      <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-xs">
+                        <Download className="stroke-[2.5px]" size={18} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 font-sans">
+                    <span className="font-extrabold text-[10.5px] sm:text-xs text-stone-850 tracking-tight leading-none block">Install App</span>
+                    <span className="text-[8.5px] text-indigo-500 font-black leading-none block">ডাউনলোড করুন</span>
                   </div>
                 </div>
 
@@ -7261,6 +7323,98 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                   )}
                 </button>
               </form>
+            </div>
+          </motion.div>
+        )}
+
+        {/* VIEW: INSTALL APP */}
+        {activeTab === 'install-app' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-24">
+            <div className="flex justify-between items-center bg-white border border-stone-150 p-3 rounded-2xl shadow-2xs">
+              <button 
+                onClick={() => switchTab('home')} 
+                className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 border border-stone-200 bg-stone-50 hover:bg-stone-100 font-extrabold text-[11px] px-3.5 py-1.5 rounded-xl transition cursor-pointer"
+              >
+                <ChevronRight size={14} className="rotate-180" /> Back
+              </button>
+              <span className="text-[11px] text-stone-500 font-extrabold font-mono">অ্যাপ ডাউনলোড (PWA Install)</span>
+            </div>
+
+            <div className="bg-white border border-stone-200 p-6 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-5">
+              <div className="w-16 h-16 bg-indigo-500/10 text-indigo-500 rounded-3xl flex items-center justify-center relative shadow-xs">
+                <div className="absolute inset-0 bg-indigo-500/10 rounded-3xl blur-md"></div>
+                <Download className="stroke-[2.5px] relative animate-bounce" size={28} />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-stone-850 text-base font-sans">টি-শার্ট ও মোবাইল অ্যাপের মত ব্যবহার করুন</h3>
+                <p className="text-stone-500 text-xs px-4 leading-relaxed font-sans">
+                  TakaHub Pro এখন আপনি কোনো ঝামেলা ছাড়াই সরাসরি আপনার ফোনে ডাউনলোড ও ইনস্টল করে ব্যবহার করতে পারবেন।
+                </p>
+              </div>
+
+              {/* Status or direct download button */}
+              {isAppInstalled ? (
+                <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold p-4 rounded-2xl leading-relaxed w-full max-w-xs font-sans">
+                  🎉 অভিনন্দন! আপনি ইতিমধ্যেই অ্যাপটি আপনার ফোনের হোম স্ক্রিনে ইনস্টল করে ব্যবহার করছেন।
+                </div>
+              ) : (
+                <div className="w-full max-w-xs space-y-4">
+                  {deferredPrompt ? (
+                    <button
+                      onClick={async () => {
+                        if (deferredPrompt) {
+                          deferredPrompt.prompt();
+                          const { outcome } = await deferredPrompt.userChoice;
+                          if (outcome === 'accepted') {
+                            setIsAppInstalled(true);
+                            setDeferredPrompt(null);
+                          }
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-extrabold text-xs py-4 px-4 rounded-2xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                    >
+                      <Download size={14} className="stroke-[3px]" />
+                      অ্যাপটি সরাসরি ইনস্টল করুন
+                    </button>
+                  ) : (
+                    <div className="bg-stone-50 border border-stone-200 text-stone-600 text-xs font-bold p-4 rounded-2xl leading-relaxed font-sans">
+                      💡 সরাসরি ইনস্টল বাটন দেখা না গেলে নিচের সহজ গাইডটি অনুসরণ করে ১ সেকেন্ডে ডাউনলোড করে নিন।
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Installation Guide Cards */}
+              <div className="w-full text-left space-y-4 pt-2">
+                <h4 className="font-extrabold text-stone-850 text-xs tracking-wider uppercase border-b border-stone-150 pb-2 font-sans">ইনস্টলেশন গাইড (Installation Guide)</h4>
+                
+                {/* Android / Chrome */}
+                <div className="bg-stone-50 hover:bg-stone-100/50 border border-stone-150 p-4 rounded-2xl space-y-2 transition-all">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 bg-emerald-500 text-white font-black text-[10px] flex items-center justify-center rounded-full font-mono">১</span>
+                    <span className="font-extrabold text-stone-850 text-xs font-sans">অ্যান্ড্রয়েড ফোন (Android / Chrome)</span>
+                  </div>
+                  <ul className="list-disc pl-5 text-[11px] text-stone-500 space-y-1 font-bold font-sans">
+                    <li>ডানদিকের উপরে থাকা <strong className="text-stone-800">৩টি ডট (Menu)</strong> আইকনে ক্লিক করুন।</li>
+                    <li>সেখান থেকে <strong className="text-stone-800">"Install app"</strong> অথবা <strong className="text-stone-800">"Add to Home screen"</strong> অপশনে ক্লিক করুন।</li>
+                    <li>কয়েক সেকেন্ডের মধ্যে অ্যাপটি আপনার ফোনের হোম স্ক্রিনে চলে আসবে!</li>
+                  </ul>
+                </div>
+
+                {/* iPhone / Safari */}
+                <div className="bg-stone-50 hover:bg-stone-100/50 border border-stone-150 p-4 rounded-2xl space-y-2 transition-all">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 bg-indigo-500 text-white font-black text-[10px] flex items-center justify-center rounded-full font-mono">২</span>
+                    <span className="font-extrabold text-stone-850 text-xs font-sans">আইফোন (iPhone / iPad / Safari)</span>
+                  </div>
+                  <ul className="list-disc pl-5 text-[11px] text-stone-500 space-y-1 font-bold font-sans">
+                    <li>সাফারি ব্রাউজারের নিচে থাকা <strong className="text-stone-800">Share (শেয়ার)</strong> বাটনে ক্লিক করুন।</li>
+                    <li>একটু নিচের দিকে স্ক্রোল করে <strong className="text-stone-800">"Add to Home Screen"</strong> অপশনটিতে ক্লিক করুন।</li>
+                    <li>ডানদিকের কোণায় <strong className="text-stone-800">Add</strong> বাটনে ক্লিক করুন। এখন এটি আপনার আইফোনের স্ক্রিনে অ্যাপ হিসেবে কাজ করবে!</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}

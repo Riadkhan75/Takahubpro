@@ -1,0 +1,25 @@
+{
+  "short_name": "TakaHub Pro",
+  "name": "TakaHub Pro - Micro-Earning Platform",
+  "description": "Elite Bengali Micro-earning, gaming, and task platform for online rewards.",
+  "icons": [
+    {
+      "src": "/app_logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#764ba2",
+  "theme_color": "#764ba2",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["entertainment", "finance"]
+}

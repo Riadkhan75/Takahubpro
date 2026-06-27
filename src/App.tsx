@@ -712,9 +712,11 @@ export default function App() {
         
         {/* Brand visual header logos */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-tr from-[#667eea] to-[#764ba2] text-white rounded-full flex items-center justify-center shadow-lg shadow-[#764ba2]/15 mb-3.5">
-            <Coins size={28} />
-          </div>
+          <img 
+            src="/app_logo.jpg" 
+            alt="TakaHub Pro Logo" 
+            className="w-16 h-16 rounded-2xl object-cover shadow-md shadow-[#764ba2]/15 mb-3.5" 
+          />
           <h2 className="text-xl font-black text-stone-850">𝗧ᴀᴋᴀ𝗛ᴜʙ 𝗣ʀᴏ</h2>
           <p className="text-stone-500 text-xs mt-1">সবচেয়ে সেরা উপায়ে আয় করুন ঘরে বসেই</p>
           
