@@ -1836,8 +1836,15 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         } else if (result === 'loss') {
           setTttGameMessage({ text: `❌ আপনি ম্যাচটি হেরেছেন! আপনার বাজি ধরা ৳${betVal} কেটে নেওয়া হয়েছে।`, type: 'error' });
         } else {
-          // Draw is also lost
-          setTttGameMessage({ text: `🤝 ম্যাচ ড্র হয়েছে! নিয়ম অনুযায়ী আপনার বাজি ধরা ৳${betVal} কেটে নেওয়া হয়েছে।`, type: 'error' });
+          // Draw: refund the bet value
+          const freshSnap = await get(ref(db, `users/${userId}`));
+          const freshBal = freshSnap.exists() ? (freshSnap.val().balance || 0) : (userData?.balance || 0);
+          const refundBal = Number((freshBal + betVal).toFixed(2));
+
+          await update(ref(db, `users/${userId}`), {
+            balance: refundBal
+          });
+          setTttGameMessage({ text: `🤝 ম্যাচ ড্র হয়েছে! আপনার বাজি ধরা ৳${betVal} ফেরত দেওয়া হয়েছে।`, type: 'info' });
         }
         setTttActiveBet(0);
       } catch (err: any) {
