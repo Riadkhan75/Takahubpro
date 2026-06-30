@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   db 
 } from '../firebase';
@@ -137,6 +137,16 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [userBalanceChangeInput, setUserBalanceChangeInput] = useState('');
   const [userBalanceTypeToEdit, setUserBalanceTypeToEdit] = useState<'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'ads'>('main');
+  
+  const deviceIdCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    dbUsers.forEach(u => {
+      if (u.deviceId) {
+        counts[u.deviceId] = (counts[u.deviceId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [dbUsers]);
   
   const [selectedSubmission, setSelectedSubmission] = useState<JobSubmission | null>(null);
   const [reviewRewardInput, setReviewRewardInput] = useState('');
@@ -2727,7 +2737,14 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                       alt="Avatar" 
                     />
                     <div className="min-w-0">
-                      <h4 className="font-bold text-slate-100 text-xs truncate leading-normal">{u.username || 'No Name'}</h4>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h4 className="font-bold text-slate-100 text-xs truncate leading-normal">{u.username || 'No Name'}</h4>
+                        {u.deviceId && (deviceIdCounts[u.deviceId] || 0) > 1 && (
+                          <span className="bg-red-500/15 text-red-400 text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 border border-red-500/25">
+                            ডুপ্লিকেট ডিভাইস
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-slate-500 font-mono block mt-0.5 truncate">{u.email}</span>
                     </div>
                   </div>
@@ -2772,6 +2789,32 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                         <span className="text-slate-400 font-bold">ডিভাইস আইডি (DeviceId):</span>
                         <span className="text-rose-450 font-mono font-bold truncate max-w-[150px]">{selectedUser.deviceId || 'N/A'}</span>
                       </div>
+                      {(() => {
+                        const duplicateAccounts = selectedUser.deviceId 
+                          ? dbUsers.filter(u => u.deviceId === selectedUser.deviceId && u.uid !== selectedUser.uid)
+                          : [];
+                        if (duplicateAccounts.length > 0) {
+                          return (
+                            <div className="bg-red-950/45 border border-red-900/50 p-2.5 rounded-xl space-y-1 my-1">
+                              <div className="flex justify-between items-center text-red-400 font-extrabold text-[10px]">
+                                <span>⚠️ মাল্টিপল অ্যাকাউন্ট পাওয়া গেছে:</span>
+                                <span className="bg-red-500 text-white px-1.5 py-0.5 rounded font-mono text-[9px] font-bold">
+                                  {duplicateAccounts.length + 1}টি অ্যাকাউন্ট
+                                </span>
+                              </div>
+                              <div className="space-y-1 text-[9px] text-slate-300 font-mono mt-1 max-h-[70px] overflow-y-auto">
+                                {duplicateAccounts.map((dup, i) => (
+                                  <div key={dup.uid || i} className="flex justify-between border-b border-slate-900/40 pb-0.5 last:border-0 last:pb-0">
+                                    <span className="truncate max-w-[100px] text-slate-400 font-bold">{dup.username || 'N/A'}</span>
+                                    <span className="truncate max-w-[140px] text-red-300/80">{dup.email}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400 font-bold">রেফারাল কোড:</span>
                         <span className="text-amber-500 font-black font-mono">{selectedUser.referCode || 'N/A'}</span>
