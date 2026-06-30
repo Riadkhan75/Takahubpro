@@ -704,6 +704,21 @@ interface UserAppProps {
 
 export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, isAdminUser, onSwitchToNovaShop }: UserAppProps) {
   const [activeTab, setActiveTab] = useState<'home' | 'refer' | 'transfer' | 'wallet' | 'mission' | 'all-jobs' | 'gmail-sell' | 'telegram-sell' | 'whatsapp-sell' | 'facebook-sell' | 'instagram-sell' | 'post-job' | 'job-details' | 'ads' | 'notifications' | 'support' | 'game' | 'spin' | 'scratch' | 'investment-plans' | 'profile' | 'deposit' | 'leaderboard' | 'gift-code' | 'install-app'>('home');
+  const [supportMenuOpen, setSupportMenuOpen] = useState(false);
+  const supportContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (supportContainerRef.current && !supportContainerRef.current.contains(event.target as Node)) {
+        setSupportMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const [userData, setUserData] = useState<UserData | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [missions, setMissions] = useState<ReferralMission[]>([]);
@@ -1194,6 +1209,16 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           adsterraDirectReward: data.adsterraDirectReward || 0.15,
           adsterraScriptCode: data.adsterraScriptCode || '',
           adsterraDailyLimit: data.adsterraDailyLimit || 10,
+          mathSolveReward: data.mathSolveReward ?? 1.0,
+          mathSolveDailyLimit: data.mathSolveDailyLimit ?? 10,
+          quizReward: data.quizReward ?? 1.0,
+          quizDailyLimit: data.quizDailyLimit ?? 10,
+          hideMathSolve: data.hideMathSolve ?? false,
+          hideQuiz: data.hideQuiz ?? false,
+          mathSolveMaintenanceEnabled: data.mathSolveMaintenanceEnabled ?? false,
+          mathSolveMaintenanceMessage: data.mathSolveMaintenanceMessage || '',
+          quizMaintenanceEnabled: data.quizMaintenanceEnabled ?? false,
+          quizMaintenanceMessage: data.quizMaintenanceMessage || '',
         });
       }
     });
@@ -3505,6 +3530,44 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   const computedSlots = parseFloat(postJobReward) > 0 && parseFloat(postJobBudget) > 0 
     ? Math.floor(parseFloat(postJobBudget) / parseFloat(postJobReward)) 
     : 0;
+
+  const activeSupports = [
+    {
+      id: 'whatsapp',
+      name: 'WhatsApp Support',
+      icon: <MessageSquare size={16} className="text-emerald-500 animate-pulse shrink-0" />,
+      url: globalSettings.supportWhatsAppNumber,
+      color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100/80 border-emerald-200/50 hover:border-emerald-300'
+    },
+    {
+      id: 'tg_channel',
+      name: 'Telegram Channel',
+      icon: <Send size={16} className="text-sky-500 shrink-0" />,
+      url: globalSettings.supportTelegramChannel,
+      color: 'bg-sky-50 text-sky-700 hover:bg-sky-100/80 border-sky-200/50 hover:border-sky-300'
+    },
+    {
+      id: 'tg_group',
+      name: 'Telegram Group',
+      icon: <Send size={16} className="text-blue-500 animate-pulse shrink-0" />,
+      url: globalSettings.supportTelegramGroup,
+      color: 'bg-blue-50 text-blue-700 hover:bg-blue-100/80 border-blue-200/50 hover:border-blue-300'
+    },
+    {
+      id: 'tg_admin',
+      name: 'Telegram Admin',
+      icon: <User size={16} className="text-indigo-500 shrink-0" />,
+      url: globalSettings.supportTelegramAdmin,
+      color: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100/80 border-indigo-200/50 hover:border-indigo-300'
+    },
+    {
+      id: 'facebook',
+      name: 'Facebook Page',
+      icon: <Facebook size={16} className="text-blue-600 shrink-0" />,
+      url: globalSettings.supportFacebookPage,
+      color: 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100/80 border-indigo-200/50 hover:border-indigo-300'
+    }
+  ].filter(item => item.url && item.url.trim() !== '');
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] font-sans text-stone-800 flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-stone-200">
@@ -6798,14 +6861,14 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </button>
             </div>
 
-            {globalSettings.hideMathSolve ? (
+            {globalSettings.hideMathSolve || globalSettings.mathSolveMaintenanceEnabled ? (
               <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4 w-full">
                 <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
                   <AlertCircle size={28} />
                 </div>
                 <h3 className="font-extrabold text-stone-850 text-base">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h3>
                 <p className="text-[#e11d48] text-xs text-center font-medium bg-rose-50 border border-rose-200/55 p-4 rounded-xl max-w-sm leading-relaxed">
-                  সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ম্যাথ সলভ গেমটি বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।
+                  {globalSettings.mathSolveMaintenanceMessage || 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের ম্যাথ সলভ গেমটি বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।'}
                 </p>
               </div>
             ) : (
@@ -6833,14 +6896,14 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </button>
             </div>
 
-            {globalSettings.hideQuiz ? (
+            {globalSettings.hideQuiz || globalSettings.quizMaintenanceEnabled ? (
               <div className="bg-white border border-stone-200 p-8 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4 w-full">
                 <div className="w-16 h-16 bg-cyan-50 text-cyan-600 rounded-full flex items-center justify-center shadow-xs">
                   <AlertCircle size={28} />
                 </div>
                 <h3 className="font-extrabold text-stone-850 text-base">দুঃখিত! এই সার্ভিসটি সাময়িকভাবে বন্ধ আছে</h3>
                 <p className="text-[#e11d48] text-xs text-center font-medium bg-rose-50 border border-rose-200/55 p-4 rounded-xl max-w-sm leading-relaxed">
-                  সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের কুইজ গেমটি বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।
+                  {globalSettings.quizMaintenanceMessage || 'সাময়িক রক্ষণাবেক্ষণের কারণে আমাদের কুইজ গেমটি বন্ধ রয়েছে। দ্রুতই পুনরায় চালু করা হবে।'}
                 </p>
               </div>
             ) : (
@@ -9232,6 +9295,74 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
             </motion.div>
           ))}
         </AnimatePresence>
+      </div>
+
+      {/* Floating Support Button & Animated Menu */}
+      <div 
+        ref={supportContainerRef}
+        className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-[100] flex flex-col items-end gap-3"
+      >
+        <AnimatePresence>
+          {supportMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: 15, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 15, scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="bg-white/95 backdrop-blur-md border border-stone-200/85 p-3 rounded-2xl shadow-2xl flex flex-col gap-2 w-52 mb-1"
+            >
+              <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
+                <span className="text-[10px] text-stone-400 font-extrabold uppercase tracking-wider font-sans">আমাদের সাপোর্ট (Support)</span>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </div>
+              
+              {activeSupports.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {activeSupports.map((item, index) => (
+                    <motion.a
+                      key={item.id}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      onClick={() => setSupportMenuOpen(false)}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold border transition duration-200 cursor-pointer ${item.color}`}
+                    >
+                      <div className="shrink-0">{item.icon}</div>
+                      <span className="truncate">{item.name}</span>
+                    </motion.a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-3 text-stone-400 text-[10px] font-bold">
+                  কোনো সাপোর্ট অপশন নেই
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          onClick={() => setSupportMenuOpen(!supportMenuOpen)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="bg-gradient-to-tr from-[#764ba2] to-[#667eea] text-white p-3.5 rounded-full shadow-2xl transition duration-300 relative flex items-center justify-center cursor-pointer hover:shadow-indigo-500/20"
+        >
+          {/* Animated pulsing outer ring */}
+          <span className="absolute inset-0 rounded-full bg-indigo-500/30 animate-ping pointer-events-none" />
+          
+          <motion.div
+            animate={{ rotate: supportMenuOpen ? 135 : 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          >
+            {supportMenuOpen ? <X size={20} /> : <HelpCircle size={20} />}
+          </motion.div>
+        </motion.button>
       </div>
 
     </div>

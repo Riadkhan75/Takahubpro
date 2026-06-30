@@ -409,6 +409,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [quizDailyLimit, setQuizDailyLimit] = useState('10');
   const [hideMathSolve, setHideMathSolve] = useState(false);
   const [hideQuiz, setHideQuiz] = useState(false);
+  const [mathSolveMaintEnabled, setMathSolveMaintEnabled] = useState(false);
+  const [mathSolveMaintMsg, setMathSolveMaintMsg] = useState('');
+  const [quizMaintEnabled, setQuizMaintEnabled] = useState(false);
+  const [quizMaintMsg, setQuizMaintMsg] = useState('');
   const [siteMaintenanceEnabled, setSiteMaintenanceEnabled] = useState(false);
   const [siteMaintenanceMessage, setSiteMaintenanceMessage] = useState('');
   const [setBkashNumber, setSetBkashNumber] = useState('01727172701');
@@ -1066,6 +1070,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setQuizDailyLimit(String(data.quizDailyLimit ?? '10'));
         setHideMathSolve(data.hideMathSolve || false);
         setHideQuiz(data.hideQuiz || false);
+        setMathSolveMaintEnabled(data.mathSolveMaintenanceEnabled || false);
+        setMathSolveMaintMsg(data.mathSolveMaintenanceMessage || '');
+        setQuizMaintEnabled(data.quizMaintenanceEnabled || false);
+        setQuizMaintMsg(data.quizMaintenanceMessage || '');
         setFreeActivationEnabled(data.freeActivationEnabled || false);
         setAdsterraDirectLink(data.adsterraDirectLink || '');
         setAdsterraDirectReward(String(data.adsterraDirectReward ?? '0.15'));
@@ -2331,6 +2339,10 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         quizDailyLimit: isNaN(parseInt(quizDailyLimit)) ? 10 : parseInt(quizDailyLimit),
         hideMathSolve: hideMathSolve,
         hideQuiz: hideQuiz,
+        mathSolveMaintenanceEnabled: mathSolveMaintEnabled,
+        mathSolveMaintenanceMessage: mathSolveMaintMsg.trim(),
+        quizMaintenanceEnabled: quizMaintEnabled,
+        quizMaintenanceMessage: quizMaintMsg.trim(),
         siteMaintenanceEnabled: siteMaintenanceEnabled,
         siteMaintenanceMessage: siteMaintenanceMessage.trim(),
         freeActivationEnabled: freeActivationEnabled,
@@ -5419,7 +5431,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-[10px] text-rose-450 font-black tracking-wider uppercase block">পপআপ খবর ও লকডাউন স্টেট</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className="relative inline-flex items-center cursor-pointer font-sans">
                         <input 
                           type="checkbox" 
                           checked={popupEnabled} 
@@ -5432,7 +5444,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                         <span className="ml-1 text-[8px] font-bold text-slate-400">{popupEnabled ? 'পপআপ অন' : 'পপআপ অফ'}</span>
                       </label>
                     </div>
-                    <p className="text-slate-500 text-[9px] leading-relaxed mb-2.5">ইউজার হোম পেজে পপআপ খবর শো করা এবং সমগ্র অ্যাপ ব্লক বা লক করার গ্লোবাল কিলার সুইচ।</p>
+                    <p className="text-slate-500 text-[9px] leading-relaxed mb-2.5">ইউজার হোম পেজে পপআপ খবর শো করা এবং সমগ্র অ্যাপ ব্লক বা লক করার গলোবাল কিলার সুইচ।</p>
                     
                     <div className="space-y-2.5">
                       <div className="grid grid-cols-2 gap-2">
@@ -5443,7 +5455,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             value={popupTitle}
                             onChange={(e) => setPopupTitle(e.target.value)}
                             placeholder="যেমন: ধামাকা অফার!"
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500 font-sans"
                           />
                         </div>
                         <div className="space-y-1">
@@ -5453,7 +5465,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             value={popupImageUrl}
                             onChange={(e) => setPopupImageUrl(e.target.value)}
                             placeholder="https://..."
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500 font-sans"
                           />
                         </div>
                       </div>
@@ -5465,7 +5477,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             value={popupMessage}
                             onChange={(e) => setPopupMessage(e.target.value)}
                             placeholder="পপআপ বিবরণ লিখুন"
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500 font-sans"
                           />
                         </div>
                         <div className="space-y-1">
@@ -5475,7 +5487,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             value={popupLink}
                             onChange={(e) => setPopupLink(e.target.value)}
                             placeholder="যেমন: https://t.me/yourchannel"
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] outline-none text-white focus:border-rose-500 font-sans"
                           />
                         </div>
                       </div>
@@ -5752,6 +5764,28 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             />
                           </div>
                         </div>
+                        <div className="pt-1.5 border-t border-slate-900/40 flex items-center gap-1.5">
+                          <input 
+                            type="checkbox"
+                            id="mathSolveMaintEnabled"
+                            checked={mathSolveMaintEnabled}
+                            onChange={(e) => setMathSolveMaintEnabled(e.target.checked)}
+                            className="rounded border-slate-800 bg-slate-950 text-amber-550 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5"
+                          />
+                          <label htmlFor="mathSolveMaintEnabled" className="text-slate-300 text-[8.5px] font-bold cursor-pointer">রক্ষণাবেক্ষণ (Maintenance) চালু করুন</label>
+                        </div>
+                        {mathSolveMaintEnabled && (
+                          <div className="space-y-1 pt-1">
+                            <label className="text-slate-400 text-[8px] font-bold">রক্ষণাবেক্ষণ বার্তা (Message)</label>
+                            <input 
+                              type="text"
+                              value={mathSolveMaintMsg}
+                              onChange={(e) => setMathSolveMaintMsg(e.target.value)}
+                              placeholder="ম্যাথ সলভ সাময়িক রক্ষণাবেক্ষণের জন্য বন্ধ আছে।"
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[9px] outline-none text-white focus:border-amber-500 font-sans font-medium"
+                            />
+                          </div>
+                        )}
                       </div>
 
                       {/* Quiz Config */}
@@ -5792,6 +5826,28 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             />
                           </div>
                         </div>
+                        <div className="pt-1.5 border-t border-slate-900/40 flex items-center gap-1.5">
+                          <input 
+                            type="checkbox"
+                            id="quizMaintEnabled"
+                            checked={quizMaintEnabled}
+                            onChange={(e) => setQuizMaintEnabled(e.target.checked)}
+                            className="rounded border-slate-800 bg-slate-950 text-cyan-550 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5"
+                          />
+                          <label htmlFor="quizMaintEnabled" className="text-slate-300 text-[8.5px] font-bold cursor-pointer">রক্ষণাবেক্ষণ (Maintenance) চালু করুন</label>
+                        </div>
+                        {quizMaintEnabled && (
+                          <div className="space-y-1 pt-1">
+                            <label className="text-slate-400 text-[8px] font-bold">রক্ষণাবেক্ষণ বার্তা (Message)</label>
+                            <input 
+                              type="text"
+                              value={quizMaintMsg}
+                              onChange={(e) => setQuizMaintMsg(e.target.value)}
+                              placeholder="কুইজ সাময়িক রক্ষণাবেক্ষণের জন্য বন্ধ আছে।"
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[9px] outline-none text-white focus:border-cyan-500 font-sans font-medium"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

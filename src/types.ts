@@ -318,6 +318,10 @@ export interface GlobalSettings {
   quizDailyLimit?: number;
   hideMathSolve?: boolean;
   hideQuiz?: boolean;
+  mathSolveMaintenanceEnabled?: boolean;
+  mathSolveMaintenanceMessage?: string;
+  quizMaintenanceEnabled?: boolean;
+  quizMaintenanceMessage?: string;
 }
 
 export interface ExternalWebsite {
