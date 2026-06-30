@@ -2165,17 +2165,40 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
         return;
       }
       const dbPath = `${platform}_sells`; // e.g. gmail_sells
-      const historyRef = ref(db, dbPath);
-      const snapshot = await get(historyRef);
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const list = Object.values(data).filter((item: any) => item && item.userId === userId);
-        // Sort by newest first
-        list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
-        setHistoryList(list);
-      } else {
-        setHistoryList([]);
+      const activeSnapshot = await get(ref(db, dbPath));
+      const archivedSnapshot = await get(ref(db, `all_sold_accounts_history/${userId}`));
+      
+      const merged: Record<string, any> = {};
+
+      if (activeSnapshot.exists()) {
+        const data = activeSnapshot.val();
+        Object.entries(data).forEach(([key, val]: [string, any]) => {
+          if (val && val.userId === userId) {
+            merged[key] = {
+              ...val,
+              platform,
+              status: val.status || 'pending'
+            };
+          }
+        });
       }
+
+      if (archivedSnapshot.exists()) {
+        const data = archivedSnapshot.val();
+        Object.entries(data).forEach(([key, val]: [string, any]) => {
+          if (val && (val.platform || 'gmail').toLowerCase() === platform.toLowerCase()) {
+            merged[key] = {
+              ...val,
+              platform: val.platform || platform,
+              status: val.status || 'pending'
+            };
+          }
+        });
+      }
+
+      const list = Object.values(merged);
+      list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+      setHistoryList(list);
     } catch (err) {
       console.error("Error fetching history:", err);
       setHistoryList([]);

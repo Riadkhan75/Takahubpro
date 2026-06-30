@@ -69,7 +69,10 @@ import {
   ShoppingBag,
   ExternalLink,
   TrendingUp,
-  Gift
+  Gift,
+  FileSpreadsheet,
+  Search,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -147,6 +150,138 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     });
     return counts;
   }, [dbUsers]);
+
+  const [isSpreadsheetOpen, setIsSpreadsheetOpen] = useState(false);
+  const [spreadsheetUser, setSpreadsheetUser] = useState<UserData | null>(null);
+  const [spreadsheetData, setSpreadsheetData] = useState<any[]>([]);
+  const [isLoadingSpreadsheet, setIsLoadingSpreadsheet] = useState(false);
+
+  const openUserSpreadsheet = async (user: UserData) => {
+    setSpreadsheetUser(user);
+    setIsSpreadsheetOpen(true);
+    setIsLoadingSpreadsheet(true);
+    try {
+      const merged: Record<string, any> = {};
+
+      // 1. Fetch from archived/history node
+      const historySnap = await get(ref(db, `all_sold_accounts_history/${user.uid}`));
+      if (historySnap.exists()) {
+        const hData = historySnap.val();
+        Object.entries(hData).forEach(([key, val]: [string, any]) => {
+          if (val) {
+            merged[key] = { ...val, id: key };
+          }
+        });
+      }
+
+      // 2. Fetch from active pending sells for completeness
+      const platforms = ['gmail', 'telegram', 'whatsapp', 'facebook', 'instagram'];
+      await Promise.all(platforms.map(async (platform) => {
+        try {
+          const snap = await get(ref(db, `${platform}_sells`));
+          if (snap.exists()) {
+            const data = snap.val();
+            Object.entries(data).forEach(([key, val]: [string, any]) => {
+              if (val && val.userId === user.uid) {
+                if (!merged[key]) {
+                  merged[key] = {
+                    ...val,
+                    id: key,
+                    platform,
+                    status: val.status || 'pending'
+                  };
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.error(`Error scanning ${platform}_sells:`, e);
+        }
+      }));
+
+      const list = Object.values(merged);
+      list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      setSpreadsheetData(list);
+    } catch (err) {
+      console.error("Error loading spreadsheet data:", err);
+    } finally {
+      setIsLoadingSpreadsheet(false);
+    }
+  };
+
+  const [spreadsheetSearch, setSpreadsheetSearch] = useState('');
+  const [spreadsheetPlatformFilter, setSpreadsheetPlatformFilter] = useState('all');
+  const [spreadsheetStatusFilter, setSpreadsheetStatusFilter] = useState('all');
+
+  const handleDownloadUserSpreadsheetCSV = () => {
+    if (!spreadsheetUser || spreadsheetData.length === 0) return;
+    const headers = ['Platform', 'Username/Seller', 'Details/Identifier', 'Password', '2FA/Backup/Details', 'Status', 'Price Paid (BDT)', 'Date & Time', 'ID'];
+    const rows = spreadsheetData.map(item => {
+      const formatDate = (ts: number) => {
+        if (!ts) return '';
+        return new Date(ts).toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' });
+      };
+      
+      const p = item.platform || 'gmail';
+      let detailsVal = '';
+      let secondaryVal = '';
+      if (p === 'gmail') {
+        detailsVal = item.email || '';
+      } else if (p === 'telegram') {
+        detailsVal = item.number || '';
+        secondaryVal = item.details || '';
+      } else if (p === 'whatsapp') {
+        detailsVal = item.number || '';
+        secondaryVal = item.details || '';
+      } else if (p === 'facebook') {
+        detailsVal = item.email || '';
+        secondaryVal = item.twoFactor || '';
+      } else if (p === 'instagram') {
+        detailsVal = item.email || '';
+        secondaryVal = item.twoFactor || '';
+      }
+
+      return [
+        p.toUpperCase(),
+        item.username || '',
+        detailsVal,
+        item.password || '',
+        secondaryVal,
+        item.status || 'pending',
+        String(item.pricePaid || 0),
+        formatDate(item.timestamp),
+        item.id || ''
+      ];
+    });
+
+    const content = [
+      headers.join(','),
+      ...rows.map(row => row.map(val => {
+        const stringVal = String(val === undefined || val === null ? '' : val).replace(/"/g, '""');
+        return `"${stringVal}"`;
+      }).join(','))
+    ].join('\n');
+
+    try {
+      const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      const filename = `Sold_Accounts_${spreadsheetUser.username}_${new Date().toISOString().split('T')[0]}.csv`;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.warn("Direct download failed, falling back:", err);
+    }
+
+    setCsvPreviewData(content);
+    setCsvPreviewTitle(`Sold_Accounts_${spreadsheetUser.username}_${new Date().toISOString().split('T')[0]}.csv`);
+    setCsvPreviewOpen(true);
+    showToast('স্প্রেডশিট ডাউনলোড করা হয়েছে! কপি করার উইন্ডোও খোলা হয়েছে।', 'success');
+  };
   
   const [selectedSubmission, setSelectedSubmission] = useState<JobSubmission | null>(null);
   const [reviewRewardInput, setReviewRewardInput] = useState('');
@@ -1389,6 +1524,19 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     }
   };
 
+  const updateSoldAccountStatus = async (userId: string, id: string, status: 'approved' | 'rejected' | 'deleted', pricePaid?: number) => {
+    if (!userId || !id) return;
+    try {
+      await update(ref(db, `all_sold_accounts_history/${userId}/${id}`), {
+        status,
+        ...(pricePaid !== undefined ? { pricePaid } : {}),
+        reviewedAt: Date.now()
+      });
+    } catch (err) {
+      console.error("Error updating sold account status archive:", err);
+    }
+  };
+
   // --- GMAIL REWARDS PAYOUTS ---
   const handleApproveGmailSell = async () => {
     if (!selectedSell) return;
@@ -1410,6 +1558,9 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         });
       }
 
+      // Update archive status
+      await updateSoldAccountStatus(selectedSell.userId, selectedSell.id, 'approved', payAmt);
+
       // 2. Remove selling requests
       await remove(ref(db, `gmail_sells/${selectedSell.id}`));
 
@@ -1425,6 +1576,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const handleDeclineGmailSell = async () => {
     if (!selectedSell) return;
     try {
+      await updateSoldAccountStatus(selectedSell.userId, selectedSell.id, 'rejected');
       await remove(ref(db, `gmail_sells/${selectedSell.id}`));
       setSelectedSell(null);
       showToast('জিমেইল বিক্রয় অনুরোধ বাতিল করা হয়েছে', 'success');
@@ -1452,6 +1604,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         });
       }
 
+      await updateSoldAccountStatus(selectedTelegramSell.userId, selectedTelegramSell.id, 'approved', payAmt);
       await remove(ref(db, `telegram_sells/${selectedTelegramSell.id}`));
       setSelectedTelegramSell(null);
       setTelegramSellPaymentInput('');
@@ -1464,6 +1617,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const handleDeclineTelegramSell = async () => {
     if (!selectedTelegramSell) return;
     try {
+      await updateSoldAccountStatus(selectedTelegramSell.userId, selectedTelegramSell.id, 'rejected');
       await remove(ref(db, `telegram_sells/${selectedTelegramSell.id}`));
       setSelectedTelegramSell(null);
       showToast('টেলিগ্রাম বিক্রয় অনুরোধ বাতিল করা হয়েছে', 'success');
@@ -1491,6 +1645,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         });
       }
 
+      await updateSoldAccountStatus(selectedWhatsappSell.userId, selectedWhatsappSell.id, 'approved', payAmt);
       await remove(ref(db, `whatsapp_sells/${selectedWhatsappSell.id}`));
       setSelectedWhatsappSell(null);
       setWhatsappSellPaymentInput('');
@@ -1503,6 +1658,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const handleDeclineWhatsappSell = async () => {
     if (!selectedWhatsappSell) return;
     try {
+      await updateSoldAccountStatus(selectedWhatsappSell.userId, selectedWhatsappSell.id, 'rejected');
       await remove(ref(db, `whatsapp_sells/${selectedWhatsappSell.id}`));
       setSelectedWhatsappSell(null);
       showToast('হোয়াটসঅ্যাপ বিক্রয় অনুরোধ বাতিল করা হয়েছে', 'success');
@@ -1530,6 +1686,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         });
       }
 
+      await updateSoldAccountStatus(selectedFacebookSell.userId, selectedFacebookSell.id, 'approved', payAmt);
       await remove(ref(db, `facebook_sells/${selectedFacebookSell.id}`));
       setSelectedFacebookSell(null);
       setFacebookSellPaymentInput('');
@@ -1542,6 +1699,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const handleDeclineFacebookSell = async () => {
     if (!selectedFacebookSell) return;
     try {
+      await updateSoldAccountStatus(selectedFacebookSell.userId, selectedFacebookSell.id, 'rejected');
       await remove(ref(db, `facebook_sells/${selectedFacebookSell.id}`));
       setSelectedFacebookSell(null);
       showToast('ফেসবুক বিক্রয় অনুরোধ বাতিল করা হয়েছে', 'success');
@@ -1569,6 +1727,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         });
       }
 
+      await updateSoldAccountStatus(selectedInstagramSell.userId, selectedInstagramSell.id, 'approved', payAmt);
       await remove(ref(db, `instagram_sells/${selectedInstagramSell.id}`));
       setSelectedInstagramSell(null);
       setInstagramSellPaymentInput('');
@@ -1581,6 +1740,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const handleDeclineInstagramSell = async () => {
     if (!selectedInstagramSell) return;
     try {
+      await updateSoldAccountStatus(selectedInstagramSell.userId, selectedInstagramSell.id, 'rejected');
       await remove(ref(db, `instagram_sells/${selectedInstagramSell.id}`));
       setSelectedInstagramSell(null);
       showToast('ইন্সটাগ্রাম বিক্রয় অনুরোধ বাতিল করা হয়েছে', 'success');
@@ -2869,6 +3029,14 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                         {selectedUser.isBanned ? ' আনব্যান করুন (Remove Ban) ✔' : ' ব্যান করুন (Ban User) ❌'}
                       </button>
 
+                      <button 
+                        onClick={() => openUserSpreadsheet(selectedUser)}
+                        className="w-full bg-slate-900 border border-slate-800 hover:border-emerald-600/50 hover:bg-slate-850 text-emerald-400 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer mt-1"
+                      >
+                        <FileSpreadsheet size={16} />
+                        <span>বিক্রি করা অ্যাকাউন্টের স্প্রেডশিট</span>
+                      </button>
+
                       <div className="space-y-1.5 pt-2 border-t border-slate-900">
                         <label className="text-slate-400 font-bold block pl-1">ব্যালেন্স এডিট ক্যাটাগরি</label>
                         <select 
@@ -3037,6 +3205,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                                 message: 'আপনি কি নিশ্চিত এই জিমেইল রিকোয়েস্টটি ডিলিট করতে চান?',
                                 onConfirm: async () => {
                                   try {
+                                    await updateSoldAccountStatus(sell.userId, sell.id, 'deleted');
                                     await remove(ref(db, `gmail_sells/${sell.id}`));
                                     showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
                                   } catch (err: any) {
@@ -3109,6 +3278,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                                 message: 'আপনি কি নিশ্চিত এই টেলিগ্রাম রিকোয়েস্টটি ডিলিট করতে চান?',
                                 onConfirm: async () => {
                                   try {
+                                    await updateSoldAccountStatus(sell.userId, sell.id, 'deleted');
                                     await remove(ref(db, `telegram_sells/${sell.id}`));
                                     showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
                                   } catch (err: any) {
@@ -3181,6 +3351,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                                 message: 'আপনি কি নিশ্চিত এই হোয়াটসঅ্যাপ রিকোয়েস্টটি ডিলিট করতে চান?',
                                 onConfirm: async () => {
                                   try {
+                                    await updateSoldAccountStatus(sell.userId, sell.id, 'deleted');
                                     await remove(ref(db, `whatsapp_sells/${sell.id}`));
                                     showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
                                   } catch (err: any) {
@@ -3255,6 +3426,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                                 message: 'আপনি কি নিশ্চিত এই ফেসবুক রিকোয়েস্টটি ডিলিট করতে চান?',
                                 onConfirm: async () => {
                                   try {
+                                    await updateSoldAccountStatus(sell.userId, sell.id, 'deleted');
                                     await remove(ref(db, `facebook_sells/${sell.id}`));
                                     showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
                                   } catch (err: any) {
@@ -3329,6 +3501,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                                 message: 'আপনি কি নিশ্চিত এই ইন্সটাগ্রাম রিকোয়েস্টটি ডিলিট করতে চান?',
                                 onConfirm: async () => {
                                   try {
+                                    await updateSoldAccountStatus(sell.userId, sell.id, 'deleted');
                                     await remove(ref(db, `instagram_sells/${sell.id}`));
                                     showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
                                   } catch (err: any) {
@@ -3403,6 +3576,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                                 message: 'আপনি কি নিশ্চিত এই ফেসবুক রিকোয়েস্টটি ডিলিট করতে চান?',
                                 onConfirm: async () => {
                                   try {
+                                    await updateSoldAccountStatus(sell.userId, sell.id, 'deleted');
                                     await remove(ref(db, `facebook_sells/${sell.id}`));
                                     showToast('রিকোয়েস্ট রিমুভ করা হয়েছে', 'success');
                                   } catch (err: any) {
@@ -6634,6 +6808,316 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                 >
                   নিশ্চিত করুন
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Spreadsheet of Sold Accounts Modal */}
+      <AnimatePresence>
+        {isSpreadsheetOpen && spreadsheetUser && (
+          <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.95 }}
+              className="bg-slate-950 border border-slate-800 rounded-3xl max-w-6xl w-full h-[90vh] flex flex-col overflow-hidden shadow-2xl font-sans"
+            >
+              {/* Header */}
+              <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-slate-900/40">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl">
+                    <FileSpreadsheet size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white flex items-center gap-2">
+                      <span>{spreadsheetUser.username} এর বিক্রি করা অ্যাকাউন্ট স্প্রেডশিট</span>
+                    </h3>
+                    <p className="text-slate-400 text-xs mt-0.5 font-semibold font-sans">
+                      Seller Email: <span className="text-slate-300 font-mono">{spreadsheetUser.email}</span> • User ID: <span className="text-slate-400 font-mono">{spreadsheetUser.uid}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleDownloadUserSpreadsheetCSV}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-950/20 transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <Download size={14} />
+                    <span>স্প্রেডশিট ডাউনলোড (.CSV)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSpreadsheetOpen(false);
+                      setSpreadsheetSearch('');
+                      setSpreadsheetPlatformFilter('all');
+                      setSpreadsheetStatusFilter('all');
+                    }}
+                    className="p-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-white rounded-xl transition cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Bar */}
+              <div className="px-4 md:px-6 py-3.5 border-b border-slate-800 bg-slate-900/20 shrink-0 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-slate-950 border border-slate-850/80 p-3 rounded-2xl flex flex-col">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">মোট বিক্রয় (Total Sells)</span>
+                  <span className="text-xl font-black text-white font-mono mt-1">{spreadsheetData.length}টি</span>
+                </div>
+                <div className="bg-slate-950 border border-slate-850/80 p-3 rounded-2xl flex flex-col">
+                  <span className="text-[10px] text-emerald-500 font-bold uppercase">অনুমোদিত (Approved)</span>
+                  <span className="text-xl font-black text-emerald-400 font-mono mt-1">
+                    {spreadsheetData.filter(d => d.status === 'approved').length}টি
+                  </span>
+                </div>
+                <div className="bg-slate-950 border border-slate-850/80 p-3 rounded-2xl flex flex-col">
+                  <span className="text-[10px] text-amber-500 font-bold uppercase">পেন্ডিং (Pending)</span>
+                  <span className="text-xl font-black text-amber-400 font-mono mt-1">
+                    {spreadsheetData.filter(d => d.status === 'pending' || !d.status).length}টি
+                  </span>
+                </div>
+                <div className="bg-slate-950 border border-slate-850/80 p-3 rounded-2xl flex flex-col">
+                  <span className="text-[10px] text-rose-500 font-bold uppercase">বাতিল / ডিলিট (Declined)</span>
+                  <span className="text-xl font-black text-rose-400 font-mono mt-1">
+                    {spreadsheetData.filter(d => d.status === 'rejected' || d.status === 'deleted').length}টি
+                  </span>
+                </div>
+              </div>
+
+              {/* Filtering Toolbar */}
+              <div className="p-4 border-b border-slate-800 shrink-0 bg-slate-950/80 flex flex-col md:flex-row gap-3">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="আইডি, ইমেল বা পাসওয়ার্ড দিয়ে সার্চ করুন..."
+                    value={spreadsheetSearch}
+                    onChange={(e) => setSpreadsheetSearch(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 transition font-sans"
+                  />
+                  {spreadsheetSearch && (
+                    <button 
+                      onClick={() => setSpreadsheetSearch('')} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs"
+                    >
+                      মুছে ফেলুন
+                    </button>
+                  )}
+                </div>
+
+                {/* Platform Filter */}
+                <div className="flex gap-2">
+                  <select
+                    value={spreadsheetPlatformFilter}
+                    onChange={(e) => setSpreadsheetPlatformFilter(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/50 transition font-sans"
+                  >
+                    <option value="all">সব ক্যাটাগরি (All Platforms)</option>
+                    <option value="gmail">Gmail</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                  </select>
+
+                  <select
+                    value={spreadsheetStatusFilter}
+                    onChange={(e) => setSpreadsheetStatusFilter(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/50 transition font-sans"
+                  >
+                    <option value="all">সব অবস্থা (All Statuses)</option>
+                    <option value="pending">পেন্ডিং (Pending)</option>
+                    <option value="approved">অনুমোদিত (Approved)</option>
+                    <option value="rejected">বাতিলকৃত (Rejected)</option>
+                    <option value="deleted">ডিলিটকৃত (Deleted)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Spreadsheet Grid Container */}
+              <div className="flex-1 overflow-auto bg-slate-950 p-4 md:p-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                {isLoadingSpreadsheet ? (
+                  <div className="flex flex-col items-center justify-center h-full py-12 space-y-3">
+                    <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-slate-400 text-xs font-bold">স্প্রেডশিট লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</span>
+                  </div>
+                ) : (() => {
+                  // Filter spreadsheetData
+                  const filtered = spreadsheetData.filter(item => {
+                    const matchPlatform = spreadsheetPlatformFilter === 'all' || (item.platform || 'gmail').toLowerCase() === spreadsheetPlatformFilter.toLowerCase();
+                    const matchStatus = spreadsheetStatusFilter === 'all' || (item.status || 'pending').toLowerCase() === spreadsheetStatusFilter.toLowerCase();
+                    
+                    const p = item.platform || 'gmail';
+                    let detailsVal = '';
+                    let secondaryVal = '';
+                    if (p === 'gmail') {
+                      detailsVal = item.email || '';
+                    } else if (p === 'telegram') {
+                      detailsVal = item.number || '';
+                      secondaryVal = item.details || '';
+                    } else if (p === 'whatsapp') {
+                      detailsVal = item.number || '';
+                      secondaryVal = item.details || '';
+                    } else if (p === 'facebook') {
+                      detailsVal = item.email || '';
+                      secondaryVal = item.twoFactor || '';
+                    } else if (p === 'instagram') {
+                      detailsVal = item.email || '';
+                      secondaryVal = item.twoFactor || '';
+                    }
+
+                    const searchStr = `${item.id || ''} ${item.username || ''} ${detailsVal} ${item.password || ''} ${secondaryVal} ${item.status || ''}`.toLowerCase();
+                    const matchSearch = !spreadsheetSearch || searchStr.includes(spreadsheetSearch.toLowerCase());
+
+                    return matchPlatform && matchStatus && matchSearch;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <FileSpreadsheet size={40} className="text-slate-700 animate-pulse mb-3" />
+                        <span className="text-slate-400 font-extrabold text-xs">কোনো তথ্য বা রেকর্ড পাওয়া যায়নি!</span>
+                        <p className="text-[10px] text-slate-500 max-w-xs mt-1 font-sans">
+                          সার্চ ফিল্টার পরিবর্তন করে বা নতুন ডিল সম্পন্ন করে আবার চেষ্টা করুন।
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="border border-slate-850 rounded-2xl overflow-hidden shadow-xl bg-slate-900/10">
+                      <table className="w-full text-left border-collapse table-fixed">
+                        {/* Excel Header row with column letters */}
+                        <thead>
+                          <tr className="bg-slate-950 border-b border-slate-800 select-none">
+                            <th className="w-12 text-center bg-slate-900 border-r border-slate-800 text-[10px] text-slate-500 font-mono py-1.5 font-bold">#</th>
+                            <th className="w-24 text-center border-r border-slate-850 text-[10px] text-slate-500 font-mono py-1.5 font-bold">A</th>
+                            <th className="w-48 text-center border-r border-slate-850 text-[10px] text-slate-500 font-mono py-1.5 font-bold">B</th>
+                            <th className="w-40 text-center border-r border-slate-850 text-[10px] text-slate-500 font-mono py-1.5 font-bold">C</th>
+                            <th className="w-44 text-center border-r border-slate-850 text-[10px] text-slate-500 font-mono py-1.5 font-bold">D</th>
+                            <th className="w-28 text-center border-r border-slate-850 text-[10px] text-slate-500 font-mono py-1.5 font-bold">E</th>
+                            <th className="w-24 text-center border-r border-slate-850 text-[10px] text-slate-500 font-mono py-1.5 font-bold">F</th>
+                            <th className="w-36 text-center border-r border-slate-850 text-[10px] text-slate-500 font-mono py-1.5 font-bold">G</th>
+                            <th className="w-24 text-center text-[10px] text-slate-500 font-mono py-1.5 font-bold pl-3">H</th>
+                          </tr>
+                          {/* Column Names Row */}
+                          <tr className="bg-slate-900 border-b border-slate-850/80 text-[10px] text-slate-400 font-bold">
+                            <th className="text-center bg-slate-900 border-r border-slate-800 py-2.5 font-sans">Row</th>
+                            <th className="text-center border-r border-slate-850 py-2.5 font-sans">Platform</th>
+                            <th className="pl-4 border-r border-slate-850 py-2.5 font-sans">Details/Identifier</th>
+                            <th className="pl-4 border-r border-slate-850 py-2.5 font-sans">Password</th>
+                            <th className="pl-4 border-r border-slate-850 py-2.5 font-sans">Backup Key/Details</th>
+                            <th className="text-center border-r border-slate-850 py-2.5 font-sans">Status</th>
+                            <th className="text-center border-r border-slate-850 py-2.5 font-sans">Paid BDT</th>
+                            <th className="text-center border-r border-slate-850 py-2.5 font-sans">Date Time</th>
+                            <th className="pl-3 py-2.5 font-sans">Record ID</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-850/50">
+                          {filtered.map((item, idx) => {
+                            const p = item.platform || 'gmail';
+                            let detailsVal = '';
+                            let secondaryVal = '';
+                            if (p === 'gmail') {
+                              detailsVal = item.email || '';
+                            } else if (p === 'telegram') {
+                              detailsVal = item.number || '';
+                              secondaryVal = item.details || '';
+                            } else if (p === 'whatsapp') {
+                              detailsVal = item.number || '';
+                              secondaryVal = item.details || '';
+                            } else if (p === 'facebook') {
+                              detailsVal = item.email || '';
+                              secondaryVal = item.twoFactor || '';
+                            } else if (p === 'instagram') {
+                              detailsVal = item.email || '';
+                              secondaryVal = item.twoFactor || '';
+                            }
+
+                            const pColors: Record<string, string> = {
+                              gmail: 'text-red-400 bg-red-500/10 border-red-500/20',
+                              telegram: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+                              whatsapp: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+                              facebook: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+                              instagram: 'text-pink-400 bg-pink-500/10 border-pink-500/20',
+                            };
+
+                            const sColors: Record<string, string> = {
+                              approved: 'text-emerald-400 bg-emerald-500/10',
+                              pending: 'text-amber-400 bg-amber-500/10 animate-pulse',
+                              rejected: 'text-rose-400 bg-rose-500/10',
+                              deleted: 'text-slate-400 bg-slate-800/40',
+                            };
+
+                            return (
+                              <tr key={item.id} className="hover:bg-slate-900/50 border-b border-slate-850 transition">
+                                {/* Row Number column like Excel */}
+                                <td className="text-center bg-slate-900 border-r border-slate-800 text-[10px] text-slate-500 font-mono font-bold py-2">{idx + 1}</td>
+                                
+                                {/* Platform */}
+                                <td className="text-center border-r border-slate-850 py-2">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-wide border uppercase inline-block ${pColors[p] || pColors.gmail}`}>
+                                    {p}
+                                  </span>
+                                </td>
+
+                                {/* Details / Email */}
+                                <td className="pl-4 border-r border-slate-850 py-2 text-xs font-mono text-slate-200 select-all truncate" title={detailsVal}>
+                                  {detailsVal || 'N/A'}
+                                </td>
+
+                                {/* Password */}
+                                <td className="pl-4 border-r border-slate-850 py-2 text-xs font-mono text-slate-300 select-all truncate" title={item.password}>
+                                  {item.password || 'N/A'}
+                                </td>
+
+                                {/* Backup Details */}
+                                <td className="pl-4 border-r border-slate-850 py-2 text-xs font-mono text-slate-400 select-all truncate" title={secondaryVal}>
+                                  {secondaryVal || 'N/A'}
+                                </td>
+
+                                {/* Status */}
+                                <td className="text-center border-r border-slate-850 py-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold capitalize inline-block ${sColors[item.status || 'pending'] || sColors.pending}`}>
+                                    {item.status || 'pending'}
+                                  </span>
+                                </td>
+
+                                {/* Paid BDT */}
+                                <td className="text-center border-r border-slate-850 py-2 text-xs font-mono font-bold text-teal-400">
+                                  ৳{item.pricePaid || 0}
+                                </td>
+
+                                {/* Date Time */}
+                                <td className="text-center border-r border-slate-850 py-2 text-[10px] font-mono text-slate-400">
+                                  {item.timestamp ? new Date(item.timestamp).toLocaleDateString('bn-BD', { timeZone: 'Asia/Dhaka' }) : 'N/A'}
+                                </td>
+
+                                {/* Record ID */}
+                                <td className="pl-3 py-2 text-[9px] font-mono text-slate-600 select-all truncate" title={item.id}>
+                                  {item.id || 'N/A'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Bottom Info Bar */}
+              <div className="p-4 border-t border-slate-800 bg-slate-900/30 text-[10px] text-slate-500 font-sans font-semibold flex justify-between items-center shrink-0">
+                <span>⚡ spreadsheet grid system - double-click cells to select all text.</span>
+                <span>প্রদর্শিত রেকর্ড সংখ্যা: {spreadsheetData.length}টি</span>
               </div>
             </motion.div>
           </div>
