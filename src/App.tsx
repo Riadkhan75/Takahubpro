@@ -44,19 +44,50 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Generate a persistent cookie helper
+function setCookie(name: string, value: string, days: number) {
+  const d = new Date();
+  d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = "expires=" + d.toUTCString();
+  document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Strict";
+}
+
+function getCookie(name: string): string | null {
+  const cname = name + "=";
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const ca = decodedCookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(cname) === 0) {
+      return c.substring(cname.length, c.length);
+    }
+  }
+  return null;
+}
+
 // Generate Browser Specific Fingerprint / Device ID 
 function getBrowserDeviceId(): string {
   let deviceId = localStorage.getItem('app_device_id');
+  if (!deviceId) {
+    deviceId = getCookie('app_device_id');
+  }
+  
   if (!deviceId) {
     const nav = window.navigator;
     const screen = window.screen;
     const baseID = [
       nav.userAgent,
       nav.language,
+      nav.platform || '',
       screen.colorDepth,
       `${screen.width}x${screen.height}`,
       new Date().getTimezoneOffset(),
-      !!nav.cookieEnabled
+      !!nav.cookieEnabled,
+      nav.hardwareConcurrency || 0,
+      nav.maxTouchPoints || 0
     ].join('.');
     
     // Hash generator
@@ -66,9 +97,11 @@ function getBrowserDeviceId(): string {
       hash = hash & hash; 
     }
     
-    deviceId = `dev_${Math.abs(hash).toString(16)}_${Date.now().toString(36)}`;
-    localStorage.setItem('app_device_id', deviceId);
+    deviceId = `dev_${Math.abs(hash).toString(16)}`;
   }
+  
+  localStorage.setItem('app_device_id', deviceId);
+  setCookie('app_device_id', deviceId, 3650); // 10 years persistence
   return deviceId;
 }
 
@@ -491,7 +524,8 @@ export default function App() {
 
       try {
         // Enforce boundary check: Maximum 1 account per device fingerprint / registry ID (excluding Admin checks)
-        if (email !== 'banglag215@gmail.com') {
+        const isSignUpAdminEmail = email === 'banglag215@gmail.com' || email === 'nazrulpost75@gmail.com';
+        if (!isSignUpAdminEmail) {
           try {
             const deviceRegRef = ref(db, `device_registry/${devId}`);
             const deviceSnapshot = await get(deviceRegRef);
@@ -579,7 +613,7 @@ export default function App() {
         }
 
         // Write record to Device Registry database table to prevent multiple accounts
-        if (email !== 'banglag215@gmail.com') {
+        if (!isSignUpAdminEmail) {
           await set(ref(db, `device_registry/${devId}`), {
             uid: user.uid,
             timestamp: Date.now()
