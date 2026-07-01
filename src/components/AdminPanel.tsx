@@ -413,6 +413,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [mathSolveMaintMsg, setMathSolveMaintMsg] = useState('');
   const [quizMaintEnabled, setQuizMaintEnabled] = useState(false);
   const [quizMaintMsg, setQuizMaintMsg] = useState('');
+  const [mathSolveUnlockFee, setMathSolveUnlockFee] = useState('0');
+  const [quizUnlockFee, setQuizUnlockFee] = useState('0');
   const [siteMaintenanceEnabled, setSiteMaintenanceEnabled] = useState(false);
   const [siteMaintenanceMessage, setSiteMaintenanceMessage] = useState('');
   const [setBkashNumber, setSetBkashNumber] = useState('01727172701');
@@ -916,6 +918,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           quizDailyLimit: data.quizDailyLimit || 10,
           hideMathSolve: data.hideMathSolve || false,
           hideQuiz: data.hideQuiz || false,
+          mathSolveUnlockFee: data.mathSolveUnlockFee ?? 0,
+          quizUnlockFee: data.quizUnlockFee ?? 0,
           gameDailyLimit: data.gameDailyLimit || 5,
           gameFreeReward: data.gameFreeReward || 1,
           withdrawFeePercent: data.withdrawFeePercent || 0,
@@ -1074,6 +1078,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         setMathSolveMaintMsg(data.mathSolveMaintenanceMessage || '');
         setQuizMaintEnabled(data.quizMaintenanceEnabled || false);
         setQuizMaintMsg(data.quizMaintenanceMessage || '');
+        setMathSolveUnlockFee(String(data.mathSolveUnlockFee ?? '0'));
+        setQuizUnlockFee(String(data.quizUnlockFee ?? '0'));
         setFreeActivationEnabled(data.freeActivationEnabled || false);
         setAdsterraDirectLink(data.adsterraDirectLink || '');
         setAdsterraDirectReward(String(data.adsterraDirectReward ?? '0.15'));
@@ -2343,6 +2349,8 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
         mathSolveMaintenanceMessage: mathSolveMaintMsg.trim(),
         quizMaintenanceEnabled: quizMaintEnabled,
         quizMaintenanceMessage: quizMaintMsg.trim(),
+        mathSolveUnlockFee: isNaN(parseFloat(mathSolveUnlockFee)) ? 0 : parseFloat(mathSolveUnlockFee),
+        quizUnlockFee: isNaN(parseFloat(quizUnlockFee)) ? 0 : parseFloat(quizUnlockFee),
         siteMaintenanceEnabled: siteMaintenanceEnabled,
         siteMaintenanceMessage: siteMaintenanceMessage.trim(),
         freeActivationEnabled: freeActivationEnabled,
@@ -5743,7 +5751,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             <span className="text-[7.5px] font-bold text-slate-400">{hideMathSolve ? 'হাইড' : 'শো'}</span>
                           </label>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-1.5">
                           <div className="space-y-0.5">
                             <label className="text-slate-400 text-[8px] font-bold">রিওয়ার্ড (৳)</label>
                             <input 
@@ -5760,6 +5768,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                               type="number" 
                               value={mathSolveDailyLimit}
                               onChange={(e) => setMathSolveDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-amber-500 font-mono font-bold"
+                            />
+                          </div>
+                          <div className="space-y-0.5">
+                            <label className="text-slate-400 text-[8px] font-bold">আনলক ফি (৳)</label>
+                            <input 
+                              type="number" 
+                              value={mathSolveUnlockFee}
+                              onChange={(e) => setMathSolveUnlockFee(e.target.value)}
                               className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-amber-500 font-mono font-bold"
                             />
                           </div>
@@ -5805,7 +5822,7 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                             <span className="text-[7.5px] font-bold text-slate-400">{hideQuiz ? 'হাইড' : 'শো'}</span>
                           </label>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-1.5">
                           <div className="space-y-0.5">
                             <label className="text-slate-400 text-[8px] font-bold">রিওয়ার্ড (৳)</label>
                             <input 
@@ -5822,6 +5839,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                               type="number" 
                               value={quizDailyLimit}
                               onChange={(e) => setQuizDailyLimit(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-cyan-500 font-mono font-bold"
+                            />
+                          </div>
+                          <div className="space-y-0.5">
+                            <label className="text-slate-400 text-[8px] font-bold">আনলক ফি (৳)</label>
+                            <input 
+                              type="number" 
+                              value={quizUnlockFee}
+                              onChange={(e) => setQuizUnlockFee(e.target.value)}
                               className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-[10px] outline-none text-white focus:border-cyan-500 font-mono font-bold"
                             />
                           </div>

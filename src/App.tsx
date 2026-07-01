@@ -134,6 +134,56 @@ export default function App() {
     return () => cleanup();
   }, [firebaseUser]);
 
+  // Global anti-copy mechanism for non-admin users
+  useEffect(() => {
+    const handleCopy = (e: ClipboardEvent) => {
+      if (!isAdmin) {
+        e.preventDefault();
+      }
+    };
+
+    const handleSelectStart = (e: Event) => {
+      if (!isAdmin) {
+        e.preventDefault();
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isAdmin && (e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      if (!isAdmin) {
+        e.preventDefault();
+      }
+    };
+
+    // Apply / remove user-select styles dynamically on body
+    if (!isAdmin) {
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
+    } else {
+      document.body.style.userSelect = 'auto';
+      document.body.style.webkitUserSelect = 'auto';
+    }
+
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('selectstart', handleSelectStart);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('selectstart', handleSelectStart);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.body.style.userSelect = 'auto';
+      document.body.style.webkitUserSelect = 'auto';
+    };
+  }, [isAdmin]);
+
   // Authentication Switch Form State
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [authEmail, setAuthEmail] = useState('');

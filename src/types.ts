@@ -31,6 +31,8 @@ export interface UserData {
   dailyMathSolveCount?: number;
   lastQuizPlayDate?: string;
   dailyQuizPlayCount?: number;
+  mathSolveUnlocked?: boolean;
+  quizUnlocked?: boolean;
   birth?: string;
   job?: string;
   location?: string;
@@ -322,6 +324,8 @@ export interface GlobalSettings {
   mathSolveMaintenanceMessage?: string;
   quizMaintenanceEnabled?: boolean;
   quizMaintenanceMessage?: string;
+  mathSolveUnlockFee?: number;
+  quizUnlockFee?: number;
 }
 
 export interface ExternalWebsite {

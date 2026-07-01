@@ -1219,6 +1219,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
           mathSolveMaintenanceMessage: data.mathSolveMaintenanceMessage || '',
           quizMaintenanceEnabled: data.quizMaintenanceEnabled ?? false,
           quizMaintenanceMessage: data.quizMaintenanceMessage || '',
+          mathSolveUnlockFee: data.mathSolveUnlockFee ?? 0,
+          quizUnlockFee: data.quizUnlockFee ?? 0,
         });
       }
     });
@@ -6873,13 +6875,59 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </div>
             ) : (
               userData && (
-                <MathSolveGame 
-                  userId={userId}
-                  userData={userData}
-                  globalSettings={globalSettings}
-                  onBalanceUpdate={() => {}}
-                  addLiveToast={addLiveToast}
-                />
+                (globalSettings.mathSolveUnlockFee && globalSettings.mathSolveUnlockFee > 0 && !userData.mathSolveUnlocked) ? (
+                  <div className="bg-white border border-stone-200/60 p-6 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4 w-full">
+                    <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-xs">
+                      <Lock size={28} className="animate-pulse" />
+                    </div>
+                    <h3 className="font-black text-stone-850 text-base">ম্যাথ সলভ গেম আনলক করুন</h3>
+                    <p className="text-stone-500 text-xs text-center max-w-xs leading-relaxed">
+                      ম্যাথ সলভ গেম খেলে দৈনিক টাকা ইনকাম করতে পারবেন। এটি একবার আনলক করতে আপনার মেইন ব্যালেন্স থেকে ফি কাটা হবে।
+                    </p>
+                    
+                    <div className="bg-stone-50 border border-stone-200/60 rounded-2xl p-4 w-full max-w-xs space-y-2">
+                      <div className="flex justify-between items-center text-xs text-stone-600 font-bold">
+                        <span>আনলক ফি (Unlock Fee):</span>
+                        <span className="text-amber-600 font-black">৳{globalSettings.mathSolveUnlockFee.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-stone-600 font-bold border-t border-stone-200/50 pt-2">
+                        <span>আপনার ব্যালেন্স:</span>
+                        <span className="text-emerald-600 font-black">৳{userData.balance.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        const fee = globalSettings.mathSolveUnlockFee || 0;
+                        if (userData.balance < fee) {
+                          addLiveToast('⚠️ দুঃখিত! আপনার ব্যালেন্সে পর্যাপ্ত টাকা নেই। দয়া করে ব্যালেন্স রিচার্জ/ডিপোজিট করুন।');
+                          return;
+                        }
+                        try {
+                          const nextBal = parseFloat((userData.balance - fee).toFixed(2));
+                          await update(ref(db, `users/${userId}`), {
+                            balance: nextBal,
+                            mathSolveUnlocked: true
+                          });
+                          addLiveToast('🎉 অভিনন্দন! ম্যাথ সলভ গেম সফলভাবে আনলক হয়েছে।');
+                        } catch (err) {
+                          addLiveToast('❌ আনলক করতে সমস্যা হয়েছে। দয়া করে আবার ট্রাই করুন।');
+                        }
+                      }}
+                      className="w-full max-w-xs bg-amber-500 hover:bg-amber-600 text-white font-extrabold py-3.5 rounded-2xl text-xs transition duration-200 shadow-md shadow-amber-500/10 cursor-pointer"
+                    >
+                      আনলক করতে ক্লিক করুন (৳{globalSettings.mathSolveUnlockFee.toFixed(2)})
+                    </button>
+                  </div>
+                ) : (
+                  <MathSolveGame 
+                    userId={userId}
+                    userData={userData}
+                    globalSettings={globalSettings}
+                    onBalanceUpdate={() => {}}
+                    addLiveToast={addLiveToast}
+                  />
+                )
               )
             )}
           </motion.div>
@@ -6908,13 +6956,59 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </div>
             ) : (
               userData && (
-                <QuizPlayGame 
-                  userId={userId}
-                  userData={userData}
-                  globalSettings={globalSettings}
-                  onBalanceUpdate={() => {}}
-                  addLiveToast={addLiveToast}
-                />
+                (globalSettings.quizUnlockFee && globalSettings.quizUnlockFee > 0 && !userData.quizUnlocked) ? (
+                  <div className="bg-white border border-stone-200/60 p-6 rounded-3xl shadow-xs text-center flex flex-col items-center space-y-4 w-full">
+                    <div className="w-16 h-16 bg-cyan-50 text-cyan-500 rounded-full flex items-center justify-center shadow-xs">
+                      <Lock size={28} className="animate-pulse" />
+                    </div>
+                    <h3 className="font-black text-stone-850 text-base">কুইজ গেম আনলক করুন</h3>
+                    <p className="text-stone-500 text-xs text-center max-w-xs leading-relaxed">
+                      দৈনিক কুইজ খেলে টাকা ইনকাম করতে পারবেন। এটি একবার আনলক করতে আপনার মেইন ব্যালেন্স থেকে ফি কাটা হবে।
+                    </p>
+                    
+                    <div className="bg-stone-50 border border-stone-200/60 rounded-2xl p-4 w-full max-w-xs space-y-2">
+                      <div className="flex justify-between items-center text-xs text-stone-600 font-bold">
+                        <span>আনলক ফি (Unlock Fee):</span>
+                        <span className="text-cyan-600 font-black">৳{globalSettings.quizUnlockFee.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-stone-600 font-bold border-t border-stone-200/50 pt-2">
+                        <span>আপনার ব্যালেন্স:</span>
+                        <span className="text-emerald-600 font-black">৳{userData.balance.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        const fee = globalSettings.quizUnlockFee || 0;
+                        if (userData.balance < fee) {
+                          addLiveToast('⚠️ দুঃখিত! আপনার ব্যালেন্সে পর্যাপ্ত টাকা নেই। দয়া করে ব্যালেন্স রিচার্জ/ডিপোজিট করুন।');
+                          return;
+                        }
+                        try {
+                          const nextBal = parseFloat((userData.balance - fee).toFixed(2));
+                          await update(ref(db, `users/${userId}`), {
+                            balance: nextBal,
+                            quizUnlocked: true
+                          });
+                          addLiveToast('🎉 অভিনন্দন! কুইজ গেম সফলভাবে আনলক হয়েছে।');
+                        } catch (err) {
+                          addLiveToast('❌ আনলক করতে সমস্যা হয়েছে। দয়া করে আবার ট্রাই করুন।');
+                        }
+                      }}
+                      className="w-full max-w-xs bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold py-3.5 rounded-2xl text-xs transition duration-200 shadow-md shadow-cyan-500/10 cursor-pointer"
+                    >
+                      আনলক করতে ক্লিক করুন (৳{globalSettings.quizUnlockFee.toFixed(2)})
+                    </button>
+                  </div>
+                ) : (
+                  <QuizPlayGame 
+                    userId={userId}
+                    userData={userData}
+                    globalSettings={globalSettings}
+                    onBalanceUpdate={() => {}}
+                    addLiveToast={addLiveToast}
+                  />
+                )
               )
             )}
           </motion.div>
