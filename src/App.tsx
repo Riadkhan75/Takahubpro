@@ -441,7 +441,8 @@ export default function App() {
               totalRefers: 0,
               deviceId: devId,
               completedJobs: {},
-              verificationStatus: 'approved'
+              verificationStatus: 'approved',
+              createdAt: new Date().toISOString()
             };
 
             await set(ref(db, `users/${user.uid}`), userPayload);
@@ -571,7 +572,8 @@ export default function App() {
           totalRefers: 0,
           deviceId: devId,
           completedJobs: {},
-          verificationStatus: isAdminEmail ? 'approved' : 'none'
+          verificationStatus: isAdminEmail ? 'approved' : 'none',
+          createdAt: new Date().toISOString()
         };
 
         // Write user details to Database user table

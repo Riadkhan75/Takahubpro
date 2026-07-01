@@ -693,6 +693,85 @@ export function getUserLevelAndBadge(userData: any) {
   return { level: 1, label: 'Bronze', badge: '🥉', color: 'text-orange-600 bg-orange-50 border-orange-100' };
 }
 
+const HomeBannerSlider = ({ banners }: { banners?: { id: string; imageUrl: string; linkUrl?: string }[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (!banners || banners.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [banners]);
+
+  const defaultBanners = [
+    {
+      id: 'default-1',
+      imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+      linkUrl: '',
+      title: 'আমাদের অফিসিয়াল গ্রুপে জয়েন করুন',
+      subtitle: 'সব আপডেট সবার আগে পেতে এবং মেম্বারদের সাথে কথা বলতে ক্লিক করুন।'
+    }
+  ];
+
+  const list = (banners && banners.length > 0) ? banners : defaultBanners;
+
+  return (
+    <div className="w-full relative rounded-[24px] overflow-hidden shadow-md h-36 sm:h-44 bg-gradient-to-br from-stone-100 to-stone-200">
+      {list.map((banner, index) => {
+        const isCurrent = index === currentIndex;
+        return (
+          <div
+            key={banner.id}
+            className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${isCurrent ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+          >
+            {banner.linkUrl ? (
+              <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                <img
+                  src={banner.imageUrl}
+                  alt="Promo Banner"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover select-none"
+                />
+              </a>
+            ) : (
+              <img
+                src={banner.imageUrl}
+                alt="Promo Banner"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover select-none"
+              />
+            )}
+            {/* Fallback Overlay Text (only for default banner if no title image) */}
+            {banner.id === 'default-1' && (
+              <div className="absolute inset-0 bg-black/45 flex flex-col justify-center px-6 text-white space-y-1">
+                <span className="bg-[#764ba2] text-white text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full w-max">
+                  OFFICIAL ANNOUNCEMENT
+                </span>
+                <h3 className="font-black text-sm sm:text-base leading-tight">আমাদের অফিসিয়াল টেলিগ্রাম গ্রুপে জয়েন করুন</h3>
+                <p className="text-white/85 text-[10px] sm:text-xs max-w-xs">সব আপডেট সবার আগে পেতে এবং মেম্বারদের সাথে কথা বলতে এখানে ক্লিক করুন।</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Dots navigation indicator if multi banner */}
+      {list.length > 1 && (
+        <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5 z-20">
+          {list.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentIndex ? 'bg-white w-4' : 'bg-white/50'}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface UserAppProps {
   userId: string;
   userEmail: string;
@@ -4059,97 +4138,8 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               </div>
             )}
 
-            {/* Total Balance Card exactly matching the visual mockup */}
-            <div className="bg-gradient-to-r from-[#8a33f5] via-[#ca28e0] to-[#f92bb4] text-white p-6.5 rounded-[28px] shadow-lg relative overflow-hidden flex flex-col justify-between">
-              {/* Backglow decor circles for fluid layout */}
-              <div className="absolute top-[-25px] right-[-25px] w-48 h-48 bg-white/5 rounded-full blur-2xl"></div>
-              <div className="absolute bottom-[-35px] left-[-35px] w-40 h-40 bg-white/5 rounded-full blur-xl"></div>
-              
-              {/* Top balance section */}
-              <div className="flex justify-between items-start w-full relative z-10">
-                <div className="space-y-1.5">
-                  <span className="text-white/80 text-xs font-bold tracking-normal block">সর্বমোট ব্যালেন্স (All combined)</span>
-                  <div className="text-white text-4.5xl font-black font-sans leading-none flex items-center">
-                    ৳{((userData?.balance || 0) + 
-                       (userData?.gmailBalance || 0) + 
-                       (userData?.telegramBalance || 0) + 
-                       (userData?.whatsappBalance || 0) + 
-                       (userData?.facebookBalance || 0) + 
-                       (userData?.instagramBalance || 0) + 
-                       (userData?.adsBalance || 0)).toFixed(2)}
-                  </div>
-                </div>
-
-                {/* Translucent circled Wallet Icon wrapper */}
-                <div 
-                  onClick={() => switchTab('wallet')}
-                  className="flex items-center justify-center w-14 h-14 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition cursor-pointer shadow-inner shrink-0"
-                >
-                  <Wallet size={24} className="text-white" />
-                </div>
-              </div>
-
-              {/* Bento sub-grid for each individual sub-balance inside the card */}
-              <div className="mt-4.5 bg-white/10 border border-white/15 rounded-2xl p-3 grid grid-cols-3 gap-2.5 relative z-10 font-sans">
-                <div className="space-y-0.5">
-                  <span className="text-white/60 text-[9px] font-bold block leading-none">মূল ব্যালেন্স</span>
-                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.balance || 0).toFixed(1)}</span>
-                </div>
-                <div className="space-y-0.5 border-l border-white/10 pl-1.5">
-                  <span className="text-white/60 text-[9px] font-bold block leading-none">জিমেইল</span>
-                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.gmailBalance || 0).toFixed(1)}</span>
-                </div>
-                <div className="space-y-0.5 border-l border-white/10 pl-1.5">
-                  <span className="text-white/60 text-[9px] font-bold block leading-none">টেলিগ্রাম</span>
-                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.telegramBalance || 0).toFixed(1)}</span>
-                </div>
-                <div className="space-y-0.5 pt-1.5 border-t border-white/10">
-                  <span className="text-white/60 text-[9px] font-bold block leading-none">হোয়াটসঅ্যাপ</span>
-                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.whatsappBalance || 0).toFixed(1)}</span>
-                </div>
-                <div className="space-y-0.5 pt-1.5 border-t border-l border-white/10 pl-1.5">
-                  <span className="text-white/60 text-[9px] font-bold block leading-none">ফেসবুক</span>
-                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.facebookBalance || 0).toFixed(1)}</span>
-                </div>
-                <div className="space-y-0.5 pt-1.5 border-t border-l border-white/10 pl-1.5">
-                  <span className="text-white/60 text-[9px] font-bold block leading-none">ইনস্টাগ্রাম</span>
-                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.instagramBalance || 0).toFixed(1)}</span>
-                </div>
-                <div className="space-y-0.5 pt-2 border-t border-white/10 col-span-3">
-                  <div className="flex justify-between items-center px-1 font-bold">
-                    <span className="text-white/70 text-[9.5px]">বিজ্ঞাপন ব্যালেন্স:</span>
-                    <span className="text-amber-300 text-[11.5px] font-black">৳{(userData?.adsBalance || 0).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom twin button actions */}
-              <div className="grid grid-cols-2 gap-3.5 mt-4.5 relative z-10">
-                <button 
-                  onClick={() => {
-                    if (globalSettings.depositMaintenanceEnabled) {
-                      triggerToast(globalSettings.depositMaintenanceMessage || 'ডিপোজিট এবং এক্টিভেশন সংক্রান্ত পেমেন্ট গেটওয়ে আপগ্রেড হচ্ছে।', 'error');
-                    } else {
-                      switchTab('deposit');
-                    }
-                  }}
-                  className="w-full flex items-center justify-center gap-1.5 border border-white/20 bg-white/10 hover:bg-white/25 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-2xl transition cursor-pointer backdrop-blur-xs shadow-xs"
-                >
-                  <ArrowDown size={14} className="stroke-[3px]" />
-                  <span>DEPOSIT</span>
-                </button>
-
-                <button 
-                  onClick={() => {
-                    switchTab('wallet');
-                  }}
-                  className="w-full flex items-center justify-center gap-1.5 border border-white/20 bg-white/10 hover:bg-white/25 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-2xl transition cursor-pointer backdrop-blur-xs shadow-xs"
-                >
-                  <ArrowUp size={14} className="stroke-[3px]" />
-                  <span>WITHDRAW</span>
-                </button>
-              </div>
-            </div>
+            {/* Home Page Promos/Banners Slider */}
+            <HomeBannerSlider banners={globalSettings.homeBanners} />
 
             {/* Verification Status Banner */}
             <div className="flex justify-center mt-1 -mb-1">
@@ -4990,14 +4980,85 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
               <span>টাকা উত্তোলন (পেমেন্ট রিকোয়েস্ট)</span>
             </h2>
 
-            {/* Main Balance Display Card above withdrawal system */}
-            <div className="bg-gradient-to-r from-[#764ba2] to-[#5a3b80] p-5 rounded-3xl text-white shadow-xs flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black tracking-widest text-purple-200 block">আপনার মূল ব্যালেন্স (Main Balance)</span>
-                <span className="text-3xl font-black font-mono">৳{(userData?.balance || 0).toFixed(2)}</span>
+            {/* Total Balance Card exactly matching the visual mockup (moved from home page) */}
+            <div className="bg-gradient-to-r from-[#8a33f5] via-[#ca28e0] to-[#f92bb4] text-white p-6.5 rounded-[28px] shadow-lg relative overflow-hidden flex flex-col justify-between">
+              {/* Backglow decor circles for fluid layout */}
+              <div className="absolute top-[-25px] right-[-25px] w-48 h-48 bg-white/5 rounded-full blur-2xl"></div>
+              <div className="absolute bottom-[-35px] left-[-35px] w-40 h-40 bg-white/5 rounded-full blur-xl"></div>
+              
+              {/* Top balance section */}
+              <div className="flex justify-between items-start w-full relative z-10">
+                <div className="space-y-1.5">
+                  <span className="text-white/80 text-xs font-bold tracking-normal block">সর্বমোট ব্যালেন্স (All combined)</span>
+                  <div className="text-white text-4.5xl font-black font-sans leading-none flex items-center">
+                    ৳{((userData?.balance || 0) + 
+                       (userData?.gmailBalance || 0) + 
+                       (userData?.telegramBalance || 0) + 
+                       (userData?.whatsappBalance || 0) + 
+                       (userData?.facebookBalance || 0) + 
+                       (userData?.instagramBalance || 0) + 
+                       (userData?.adsBalance || 0)).toFixed(2)}
+                  </div>
+                </div>
+
+                {/* Translucent circled Wallet Icon wrapper */}
+                <div 
+                  className="flex items-center justify-center w-14 h-14 bg-white/10 border border-white/20 rounded-full shadow-inner shrink-0"
+                >
+                  <Wallet size={24} className="text-white" />
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-xs">
-                <Coins size={22} className="text-white shrink-0 animate-pulse" />
+
+              {/* Bento sub-grid for each individual sub-balance inside the card */}
+              <div className="mt-4.5 bg-white/10 border border-white/15 rounded-2xl p-3 grid grid-cols-3 gap-2.5 relative z-10 font-sans">
+                <div className="space-y-0.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">মূল ব্যালেন্স</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.balance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">জিমেইল</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.gmailBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">টেলিগ্রাম</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.telegramBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-1.5 border-t border-white/10">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">হোয়াটসঅ্যাপ</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.whatsappBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-1.5 border-t border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">ফেসবুক</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.facebookBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-1.5 border-t border-l border-white/10 pl-1.5">
+                  <span className="text-white/60 text-[9px] font-bold block leading-none">ইনস্টাগ্রাম</span>
+                  <span className="font-extrabold text-[11px] block text-white">৳{(userData?.instagramBalance || 0).toFixed(1)}</span>
+                </div>
+                <div className="space-y-0.5 pt-2 border-t border-white/10 col-span-3">
+                  <div className="flex justify-between items-center px-1 font-bold">
+                    <span className="text-white/70 text-[9.5px]">বিজ্ঞাপন ব্যালেন্স:</span>
+                    <span className="text-amber-300 text-[11.5px] font-black">৳{(userData?.adsBalance || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom action to Deposit if needed */}
+              <div className="grid grid-cols-1 mt-4.5 relative z-10">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (globalSettings.depositMaintenanceEnabled) {
+                      triggerToast(globalSettings.depositMaintenanceMessage || 'ডিপোজিট এবং এক্টিভেশন সংক্রান্ত পেমেন্ট গেটওয়ে আপগ্রেড হচ্ছে।', 'error');
+                    } else {
+                      switchTab('deposit');
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 border border-white/20 bg-white/10 hover:bg-white/25 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-2xl transition cursor-pointer backdrop-blur-xs shadow-xs"
+                >
+                  <ArrowDown size={14} className="stroke-[3px]" />
+                  <span>DEPOSIT (টাকা ডিপোজিট করুন)</span>
+                </button>
               </div>
             </div>
 
@@ -6658,7 +6719,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
                       <label className="text-xs font-bold text-stone-600 block pl-1">ফিডব্যাক বা কাজের অতিরিক্ত বিবরণ</label>
                       <textarea 
                         rows={2}
-                        placeholder="আপনার bKash নম্বর, TrxID বা কাজের বিবরণ লিখুন..."
+                        placeholder="কাজের বিবরণ লিখুন..."
                         value={submitFeedback}
                         onChange={(e) => setSubmitFeedback(e.target.value)}
                         className="w-full bg-stone-50 border-2 border-stone-150 focus:border-[#764ba2] rounded-2xl p-4 text-xs font-bold outline-none transition resize-none"

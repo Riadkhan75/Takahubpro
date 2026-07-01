@@ -84,6 +84,53 @@ interface AdminPanelProps {
   onSwitchToNovaAdmin?: () => void;
 }
 
+const ActiveTimeAgo = ({ timestamp }: { timestamp?: number }) => {
+  const [timeText, setTimeText] = useState('কখনো প্রবেশ করেননি');
+
+  useEffect(() => {
+    const updateTime = () => {
+      if (!timestamp) {
+        setTimeText('কখনো প্রবেশ করেননি');
+        return;
+      }
+      const diffMs = Date.now() - timestamp;
+      if (diffMs < 0) {
+        setTimeText('এইমাত্র');
+        return;
+      }
+      const diffSecs = Math.floor(diffMs / 1000);
+      const diffMins = Math.floor(diffSecs / 60);
+      const diffHrs = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHrs / 24);
+
+      if (diffSecs < 10) {
+        setTimeText('এইমাত্র');
+      } else if (diffSecs < 60) {
+        setTimeText(`${diffSecs} সেকেন্ড আগে`);
+      } else if (diffMins < 60) {
+        setTimeText(`${diffMins} মিনিট ${diffSecs % 60} সেকেন্ড আগে`);
+      } else if (diffHrs < 24) {
+        setTimeText(`${diffHrs} ঘণ্টা ${diffMins % 60} মিনিট আগে`);
+      } else {
+        setTimeText(`${diffDays} দিন ${diffHrs % 24} ঘণ্টা আগে`);
+      }
+    };
+
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, [timestamp]);
+
+  const isOnline = timestamp && (Date.now() - timestamp < 120000);
+
+  return (
+    <span className={`inline-flex items-center gap-1 font-mono font-bold text-[9.5px] px-1.5 py-0.5 rounded shrink-0 ${isOnline ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-400 bg-slate-900/60 border border-slate-800/40'}`}>
+      {isOnline && <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse shrink-0" />}
+      {timeText}
+    </span>
+  );
+};
+
 export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwitchToNovaAdmin }: AdminPanelProps) {
   const [adminTab, setAdminTab] = useState<'stats' | 'users' | 'sells' | 'job-submissions' | 'activations' | 'deposits' | 'ads' | 'tasks' | 'withdraws' | 'missions' | 'settings' | 'campaigns' | 'plans' | 'admins' | 'gift-codes'>('stats');
   const [sellSubTab, setSellSubTab] = useState<'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'instagram'>('gmail');
@@ -150,6 +197,28 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     });
     return counts;
   }, [dbUsers]);
+
+  const getDaysAgoText = (createdAtStr?: string) => {
+    if (!createdAtStr) return 'অনেক দিন আগে (পুরাতন মেম্বার)';
+    try {
+      const createdDate = new Date(createdAtStr);
+      if (isNaN(createdDate.getTime())) return 'অজানা সময়';
+      const diffTime = Math.abs(Date.now() - createdDate.getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) {
+        const diffHrs = Math.floor(diffTime / (1000 * 60 * 60));
+        if (diffHrs === 0) {
+          const diffMins = Math.floor(diffTime / (1000 * 60));
+          return diffMins <= 1 ? 'এইমাত্র' : `${diffMins} মিনিট আগে`;
+        }
+        return `${diffHrs} ঘণ্টা আগে`;
+      }
+      return `${diffDays} দিন আগে`;
+    } catch (e) {
+      return 'অজানা সময়';
+    }
+  };
 
   const [isSpreadsheetOpen, setIsSpreadsheetOpen] = useState(false);
   const [spreadsheetUser, setSpreadsheetUser] = useState<UserData | null>(null);
@@ -427,6 +496,12 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [setWhatsappLastDate, setSetWhatsappLastDate] = useState('');
   const [setFacebookLastDate, setSetFacebookLastDate] = useState('');
   const [setInstagramLastDate, setSetInstagramLastDate] = useState('');
+
+  // Home Page Banners Admin States
+  const [homeBanners, setHomeBanners] = useState<any[]>([]);
+  const [newBannerImageUrl, setNewBannerImageUrl] = useState('');
+  const [newBannerLinkUrl, setNewBannerLinkUrl] = useState('');
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
   // Sub-Admins Management states
   const [subAdmins, setSubAdmins] = useState<any[]>([]);
@@ -946,10 +1021,12 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
           telegramTutorialUrl: data.telegramTutorialUrl || '',
           whatsappTutorialUrl: data.whatsappTutorialUrl || '',
           facebookTutorialUrl: data.facebookTutorialUrl || '',
-          instagramTutorialUrl: data.instagramTutorialUrl || '',
+           instagramTutorialUrl: data.instagramTutorialUrl || '',
+          homeBanners: data.homeBanners || [],
         });
 
         // Seed inputs
+        setHomeBanners(data.homeBanners || []);
         setSetMinWithdrawLimit(String(data.minWithdraw || 50));
         setWithdrawFeePercentState(String(data.withdrawFeePercent || 0));
         setDepositFeePercentState(String(data.depositFeePercent || 0));
@@ -2383,6 +2460,67 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
     }
   };
 
+  const handleBannerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBanner(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const IMGBB_API_KEY = '20525efceff3938cbfc52fa653e9f86a';
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewBannerImageUrl(data.data.url);
+        showToast('ব্যানার ছবি সফলভাবে আপলোড হয়েছে!', 'success');
+      } else {
+        showToast('আপলোড ব্যর্থ হয়েছে! অনুগ্রহ করে আবার চেষ্টা করুন বা ম্যানুয়ালি URL দিন।', 'err');
+      }
+    } catch (err: any) {
+      showToast('ত্রুটি: ' + err.message, 'err');
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
+
+  const handleAddHomeBanner = async () => {
+    if (!newBannerImageUrl.trim()) {
+      showToast('অনুগ্রহ করে ব্যানারের ছবির URL দিন অথবা ফাইল আপলোড করুন।', 'err');
+      return;
+    }
+    const newBanner = {
+      id: 'banner_' + Date.now(),
+      imageUrl: newBannerImageUrl.trim(),
+      linkUrl: newBannerLinkUrl.trim() || ''
+    };
+    const updatedBanners = [...homeBanners, newBanner];
+    try {
+      await update(ref(db, 'settings'), {
+        homeBanners: updatedBanners
+      });
+      setNewBannerImageUrl('');
+      setNewBannerLinkUrl('');
+      showToast('নতুন ব্যানার সফলভাবে যুক্ত হয়েছে!', 'success');
+    } catch (err: any) {
+      showToast('ব্যানার যুক্ত করতে ত্রুটি: ' + err.message, 'err');
+    }
+  };
+
+  const handleDeleteHomeBanner = async (bannerId: string) => {
+    const updatedBanners = homeBanners.filter(b => b.id !== bannerId);
+    try {
+      await update(ref(db, 'settings'), {
+        homeBanners: updatedBanners
+      });
+      showToast('ব্যানারটি সফলভাবে মুছে ফেলা হয়েছে।', 'success');
+    } catch (err: any) {
+      showToast('ব্যানার মুছতে ত্রুটি: ' + err.message, 'err');
+    }
+  };
+
   const handleTestTelegramBot = async () => {
     if (!telegramBotToken.trim() || !telegramChatId.trim()) {
       setTelegramTestResult({ text: 'টোকেন এবং চ্যাট আইডি দুটোই লিখুন!', type: 'error' });
@@ -2925,7 +3063,15 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono block mt-0.5 truncate">{u.email}</span>
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 mt-1">
+                        <span className="text-[10px] text-slate-500 font-mono truncate max-w-[130px]">{u.email}</span>
+                        <span className="text-slate-700 text-[9px]">•</span>
+                        <span className="text-amber-500 bg-amber-500/5 px-1 py-0.5 rounded text-[8.5px] font-bold font-sans shrink-0" title="রেজিস্ট্রেশন">
+                          রেজি: {getDaysAgoText(u.createdAt)}
+                        </span>
+                        <span className="text-slate-700 text-[9px]">•</span>
+                        <ActiveTimeAgo timestamp={u.lastActive} />
+                      </div>
                     </div>
                   </div>
 
@@ -2964,6 +3110,16 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400 font-bold">ইমেইল:</span>
                         <span className="text-white font-mono">{selectedUser.email}</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-slate-900/20 px-2.5 py-1.5 rounded-lg border border-slate-800/45">
+                        <span className="text-slate-400 font-bold">জয়েন করেছেন:</span>
+                        <span className="text-amber-400 font-extrabold font-sans bg-amber-500/5 px-2 py-0.5 rounded text-[10px]">
+                          {getDaysAgoText(selectedUser.createdAt)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center bg-slate-900/20 px-2.5 py-1.5 rounded-lg border border-slate-800/45">
+                        <span className="text-slate-400 font-bold">শেষ প্রবেশ (Last Active):</span>
+                        <ActiveTimeAgo timestamp={selectedUser.lastActive} />
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400 font-bold">ডিভাইস আইডি (DeviceId):</span>
@@ -6162,6 +6318,113 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
                   </div>
                 </div>
 
+              </div>
+
+              {/* SECTION: HOME PAGE BANNER MANAGEMENT */}
+              <div className="pt-5 border-t border-slate-800 space-y-4">
+                <span className="text-[11px] font-extrabold uppercase text-amber-500 tracking-wider block">হোম পেজ ব্যানার ম্যানেজমেন্ট (Home Page Banner Settings)</span>
+                <p className="text-slate-500 text-[10px]">ইউজারদের হোম পেজের জন্য ব্যানার অ্যাড করুন। ব্যানারগুলোতে সরাসরি ইমেজ ফাইল আপলোড করতে পারবেন এবং অপショナル লিংক যুক্ত করতে পারবেন।</p>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  {/* Card for Add Banner */}
+                  <div className="bg-slate-900 border border-slate-800 p-4.5 rounded-2xl space-y-4 lg:col-span-1">
+                    <span className="text-[10px] text-teal-400 font-bold uppercase block tracking-wider">নতুন ব্যানার যুক্ত করুন</span>
+                    
+                    {/* Image URL / Upload field */}
+                    <div className="space-y-2">
+                      <label className="text-slate-400 text-[10px] font-bold block">ব্যানার ছবি (Upload Banner Photo)</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="পাস করুন বা আপলোড করুন..." 
+                          value={newBannerImageUrl}
+                          onChange={(e) => setNewBannerImageUrl(e.target.value)}
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-teal-500 text-white font-mono"
+                        />
+                        <label className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer relative">
+                          {isUploadingBanner ? 'আপলোড হচ্ছে...' : 'আপলোড'}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleBannerImageUpload} 
+                            disabled={isUploadingBanner}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-[8.5px] text-slate-500">অনুরূপ সাইজ (যেমন ১২০০x৪০০ পিক্সেল) এর ব্যানার সবচেয়ে চমৎকার দেখায়।</p>
+                    </div>
+
+                    {/* Optional Target Link */}
+                    <div className="space-y-1.5">
+                      <label className="text-slate-400 text-[10px] font-bold block">অপショナル লিংক (Target Link - Optional)</label>
+                      <input 
+                        type="url" 
+                        placeholder="https://example.com/promo-page" 
+                        value={newBannerLinkUrl}
+                        onChange={(e) => setNewBannerLinkUrl(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-teal-500 text-white font-mono"
+                      />
+                    </div>
+
+                    {/* Submit Add Button */}
+                    <button
+                      type="button"
+                      onClick={handleAddHomeBanner}
+                      className="w-full bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider py-3 rounded-xl transition cursor-pointer"
+                    >
+                      ব্যানার যুক্ত করুন
+                    </button>
+                  </div>
+
+                  {/* Card for Banner List Grid */}
+                  <div className="bg-slate-900 border border-slate-800 p-4.5 rounded-2xl space-y-4 lg:col-span-2">
+                    <span className="text-[10px] text-teal-400 font-bold uppercase block tracking-wider">চলতি ব্যানারসমূহ ({homeBanners.length})</span>
+                    
+                    {homeBanners.length === 0 ? (
+                      <div className="border border-dashed border-slate-800 rounded-xl p-10 text-center text-slate-600 text-xs">
+                        কোনো কাস্টম ব্যানার অ্যাড করা নেই। হোম পেজে ডিফল্ট ব্যানারgrid প্রদর্শিত হচ্ছে।
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[320px] overflow-y-auto pr-1">
+                        {homeBanners.map((b: any, index: number) => (
+                          <div key={b.id || index} className="bg-slate-950 border border-slate-850 rounded-xl overflow-hidden relative flex flex-col justify-between group">
+                            {/* Banner Image Preview */}
+                            <div className="h-28 bg-slate-900 overflow-hidden relative">
+                              <img 
+                                src={b.imageUrl} 
+                                alt="Admin Banner Preview" 
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-2 left-2 bg-slate-950/80 text-white text-[9px] px-1.5 py-0.5 rounded font-bold font-mono">
+                                #{index + 1}
+                              </div>
+                            </div>
+
+                            {/* Details & Delete */}
+                            <div className="p-2.5 space-y-1.5 bg-slate-950">
+                              <div className="text-[9px] text-slate-400 font-semibold truncate font-mono block">
+                                {b.linkUrl ? (
+                                  <span className="text-teal-400">লিংক: {b.linkUrl}</span>
+                                ) : (
+                                  <span className="text-slate-500">লিংক নেই (শুধু ছবি)</span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteHomeBanner(b.id)}
+                                className="w-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                ব্যানারটি মুছে ফেলুন
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* SECTION: SINGLE BY SINGLE FEATURE MAINTENANCE OPTIONS */}

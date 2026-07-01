@@ -37,6 +37,7 @@ export interface UserData {
   job?: string;
   location?: string;
   sex?: string;
+  createdAt?: string;
 }
 
 export interface WithdrawalRequest {
@@ -195,7 +196,14 @@ export interface GlobalNotification {
   timestamp: number;
 }
 
+export interface HomeBanner {
+  id: string;
+  imageUrl: string;
+  linkUrl?: string;
+}
+
 export interface GlobalSettings {
+  homeBanners?: HomeBanner[];
   minWithdraw: number;
   minWithdrawGmail?: number;
   minWithdrawTelegram?: number;
