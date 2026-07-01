@@ -3651,7 +3651,7 @@ export default function UserApp({ userId, userEmail, onLogout, onSwitchToAdmin, 
   ].filter(item => item.url && item.url.trim() !== '');
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] font-sans text-stone-800 flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-stone-200">
+    <div className="min-h-screen bg-[#f0f2f5] font-sans text-stone-800 flex flex-col w-full max-w-md mx-auto relative sm:shadow-2xl overflow-x-hidden sm:border-x sm:border-stone-200">
       
       {/* 1. Account suspended/banned lockout screen */}
       {userData?.isBanned && (

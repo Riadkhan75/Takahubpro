@@ -188,6 +188,70 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
   const [userBalanceChangeInput, setUserBalanceChangeInput] = useState('');
   const [userBalanceTypeToEdit, setUserBalanceTypeToEdit] = useState<'main' | 'gmail' | 'telegram' | 'whatsapp' | 'facebook' | 'ads'>('main');
   
+  const [selectedUserWalletHistory, setSelectedUserWalletHistory] = useState<any[]>([]);
+  const [selectedUserTransactions, setSelectedUserTransactions] = useState<any[]>([]);
+  const [selectedUserInvestments, setSelectedUserInvestments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!selectedUser) {
+      setSelectedUserWalletHistory([]);
+      setSelectedUserTransactions([]);
+      setSelectedUserInvestments([]);
+      return;
+    }
+
+    const walletHistoryRef = ref(db, `wallet_history/${selectedUser.uid}`);
+    const unsubWallet = onValue(walletHistoryRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })).reverse();
+        setSelectedUserWalletHistory(list);
+      } else {
+        setSelectedUserWalletHistory([]);
+      }
+    });
+
+    const investmentsRef = ref(db, `user_investments/${selectedUser.uid}`);
+    const unsubInvestments = onValue(investmentsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([key, val]: [string, any]) => ({
+          id: key,
+          ...val
+        })).reverse();
+        setSelectedUserInvestments(list);
+      } else {
+        setSelectedUserInvestments([]);
+      }
+    });
+
+    const transactionsRef = ref(db, 'transactions');
+    const unsubTx = onValue(transactionsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data)
+          .map(([key, val]: [string, any]) => ({
+            id: key,
+            ...val
+          }))
+          .filter((tx: any) => tx.from === selectedUser.uid || tx.to === selectedUser.uid)
+          .reverse();
+        setSelectedUserTransactions(list);
+      } else {
+        setSelectedUserTransactions([]);
+      }
+    });
+
+    return () => {
+      unsubWallet();
+      unsubInvestments();
+      unsubTx();
+    };
+  }, [selectedUser]);
+  
   const deviceIdCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     dbUsers.forEach(u => {
@@ -3087,177 +3151,496 @@ export default function AdminPanel({ adminEmail, onLogout, onSwitchToUser, onSwi
 
             {/* Individual user modal manages */}
             <AnimatePresence>
-              {selectedUser && (
-                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-                  <motion.div 
-                    initial={{ scale: 0.9 }} 
-                    animate={{ scale: 1 }} 
-                    exit={{ scale: 0.9 }}
-                    className="bg-slate-950 border border-slate-800 p-6 rounded-2xl w-full max-w-sm text-xs space-y-4"
-                  >
-                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                      <h3 className="font-bold text-white text-sm">ইউজার ডিটেইলস ও ব্যালেন্স এডজাস্ট</h3>
-                      <button onClick={() => setSelectedUser(null)} className="text-slate-400 hover:text-white">
-                        <X size={18} />
-                      </button>
-                    </div>
+              {selectedUser && (() => {
+                // Compile all recent activities for the selectedUser
+                const userActivities: any[] = [];
 
-                    <div className="space-y-2 border-b border-slate-800 pb-3 leading-normal">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-bold">নাম:</span>
-                        <span className="text-white font-extrabold">{selectedUser.username}</span>
+                // 1. Job Submissions
+                jobSubmissions
+                  .filter(js => js.workerId === selectedUser.uid)
+                  .forEach(js => {
+                    userActivities.push({
+                      id: js.id || `job_${js.timestamp}`,
+                      type: 'microjob',
+                      title: js.jobTitle || 'মাইক্রো জব',
+                      status: js.status,
+                      timestamp: js.timestamp || 0,
+                      details: js.feedback || 'কোনো বিবরণ নেই',
+                      amount: null,
+                      badgeColor: js.status === 'approved' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : js.status === 'rejected' 
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: js.status === 'approved' ? 'Approved' : js.status === 'rejected' ? 'Rejected' : 'Pending',
+                    });
+                  });
+
+                // 2. Gmail sells
+                sells
+                  .filter(s => s.userId === selectedUser.uid)
+                  .forEach(s => {
+                    userActivities.push({
+                      id: s.id || `gmail_${s.timestamp}`,
+                      type: 'gmail',
+                      title: 'জিমেইল বিক্রয়',
+                      status: s.status || 'pending',
+                      timestamp: s.timestamp || 0,
+                      details: `ইমেইল: ${s.email} | পাসওয়ার্ড: ${s.password}`,
+                      amount: null,
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: s.status || 'Pending',
+                    });
+                  });
+
+                // 3. Telegram sells
+                telegramSells
+                  .filter(s => s.userId === selectedUser.uid)
+                  .forEach(s => {
+                    userActivities.push({
+                      id: s.id || `tg_${s.timestamp}`,
+                      type: 'telegram',
+                      title: 'টেলিগ্রাম অ্যাকাউন্ট বিক্রয়',
+                      status: s.status || 'pending',
+                      timestamp: s.timestamp || 0,
+                      details: `নম্বর: ${s.number} | বিবরণ: ${s.details || 'N/A'}`,
+                      amount: null,
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: s.status || 'Pending',
+                    });
+                  });
+
+                // 4. WhatsApp sells
+                whatsappSells
+                  .filter(s => s.userId === selectedUser.uid)
+                  .forEach(s => {
+                    userActivities.push({
+                      id: s.id || `wa_${s.timestamp}`,
+                      type: 'whatsapp',
+                      title: 'হোয়াটসঅ্যাপ অ্যাকাউন্ট বিক্রয়',
+                      status: s.status || 'pending',
+                      timestamp: s.timestamp || 0,
+                      details: `নম্বর: ${s.number} | বিবরণ: ${s.details || 'N/A'}`,
+                      amount: null,
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: s.status || 'Pending',
+                    });
+                  });
+
+                // 5. Facebook sells
+                facebookSells
+                  .filter(s => s.userId === selectedUser.uid)
+                  .forEach(s => {
+                    userActivities.push({
+                      id: s.id || `fb_${s.timestamp}`,
+                      type: 'facebook',
+                      title: 'ফেসবুক অ্যাকাউন্ট বিক্রয়',
+                      status: s.status || 'pending',
+                      timestamp: s.timestamp || 0,
+                      details: `ইমেইল: ${s.email} | পাসওয়ার্ড: ${s.password} | 2FA: ${s.twoFactor || 'N/A'}`,
+                      amount: null,
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: s.status || 'Pending',
+                    });
+                  });
+
+                // 6. Instagram sells
+                instagramSells
+                  .filter(s => s.userId === selectedUser.uid)
+                  .forEach(s => {
+                    userActivities.push({
+                      id: s.id || `ig_${s.timestamp}`,
+                      type: 'instagram',
+                      title: 'ইনস্টাগ্রাম অ্যাকাউন্ট বিক্রয়',
+                      status: s.status || 'pending',
+                      timestamp: s.timestamp || 0,
+                      details: `ইমেইল: ${s.email} | পাসওয়ার্ড: ${s.password} | 2FA: ${s.twoFactor || 'N/A'}`,
+                      amount: null,
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: s.status || 'Pending',
+                    });
+                  });
+
+                // 7. Deposits
+                deposits
+                  .filter(d => d.userId === selectedUser.uid)
+                  .forEach(d => {
+                    userActivities.push({
+                      id: d.id || `deposit_${d.timestamp}`,
+                      type: 'deposit',
+                      title: `ডিপোজিট (${d.method.toUpperCase()})`,
+                      status: d.status,
+                      timestamp: d.timestamp || 0,
+                      details: `নম্বর: ${d.number} | TrxID: ${d.trxId}`,
+                      amount: `৳${d.amount}`,
+                      badgeColor: d.status === 'approved' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : d.status === 'rejected' 
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: d.status === 'approved' ? 'Approved' : d.status === 'rejected' ? 'Rejected' : 'Pending',
+                    });
+                  });
+
+                // 8. Withdrawals
+                withdraws
+                  .filter(w => w.userId === selectedUser.uid)
+                  .forEach(w => {
+                    userActivities.push({
+                      id: w.id || `withdraw_${w.timestamp}`,
+                      type: 'withdraw',
+                      title: `উত্তোলন (${w.method.toUpperCase()})`,
+                      status: w.status,
+                      timestamp: w.timestamp || 0,
+                      details: `নম্বর: ${w.number}`,
+                      amount: `৳${w.amount}`,
+                      badgeColor: w.status === 'approved' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : w.status === 'rejected' 
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: w.status === 'approved' ? 'Approved' : w.status === 'rejected' ? 'Rejected' : 'Pending',
+                    });
+                  });
+
+                // 9. Activations
+                activations
+                  .filter(a => a.userId === selectedUser.uid)
+                  .forEach(a => {
+                    userActivities.push({
+                      id: a.id || `activation_${a.timestamp}`,
+                      type: 'activation',
+                      title: `অ্যাক্টিভেশন রিকোয়েস্ট (${a.method.toUpperCase()})`,
+                      status: a.status,
+                      timestamp: a.timestamp || 0,
+                      details: `নম্বর: ${a.number} | TrxID: ${a.trxId}`,
+                      amount: null,
+                      badgeColor: a.status === 'approved' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : a.status === 'rejected' 
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      statusText: a.status === 'approved' ? 'Approved' : a.status === 'rejected' ? 'Rejected' : 'Pending',
+                    });
+                  });
+
+                // 10. Wallet History (Balance Adjustments)
+                selectedUserWalletHistory.forEach(wh => {
+                  userActivities.push({
+                    id: wh.id || `wh_${wh.timestamp}`,
+                    type: 'wallet_history',
+                    title: wh.purpose || 'ব্যালেন্স অ্যাডজাস্টমেন্ট',
+                    status: 'success',
+                    timestamp: wh.timestamp || 0,
+                    details: `টাইপ: ${wh.type === 'add' ? 'ব্যালেন্স যোগ' : 'ব্যালেন্স বিয়োগ'} (অ্যাডমিন কর্তক)`,
+                    amount: wh.type === 'add' ? `+৳${wh.amount}` : `-৳${wh.amount}`,
+                    badgeColor: wh.type === 'add' 
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+                    statusText: wh.type === 'add' ? 'Added' : 'Deducted',
+                  });
+                });
+
+                // 11. Transactions (Balance Transfers)
+                selectedUserTransactions.forEach(tx => {
+                  const isSender = tx.from === selectedUser.uid;
+                  userActivities.push({
+                    id: tx.id || `tx_${tx.timestamp}`,
+                    type: 'transaction',
+                    title: isSender ? `সেন্ড মানি (To: ${tx.toName || 'Recipient'})` : `রিসিভ মানি (From: ${tx.fromEmail || 'Sender'})`,
+                    status: 'success',
+                    timestamp: tx.timestamp || 0,
+                    details: isSender ? `কাকে: ${tx.to} (ID)` : `কার থেকে: ${tx.from} (ID)`,
+                    amount: isSender ? `-৳${tx.amount}` : `+৳${tx.amount}`,
+                    badgeColor: isSender 
+                      ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
+                      : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+                    statusText: isSender ? 'Sent' : 'Received',
+                  });
+                });
+
+                // 12. User Investments (Investment Purchases)
+                selectedUserInvestments.forEach(inv => {
+                  userActivities.push({
+                    id: inv.id || `inv_${inv.purchaseDate}`,
+                    type: 'investment',
+                    title: `ইনভেস্টমেন্ট প্ল্যান (${inv.planName || 'Plan'})`,
+                    status: inv.status || 'active',
+                    timestamp: inv.purchaseDate || 0,
+                    details: `মূল্য: ৳${inv.cost} | মেয়াদ: ${inv.claimsLeft}/${inv.validityDays} দিন বাকি`,
+                    amount: `৳${inv.totalReturn} (সম্ভাব্য)`,
+                    badgeColor: inv.status === 'active' 
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                      : 'bg-slate-500/10 text-slate-400 border border-slate-500/20',
+                    statusText: inv.status === 'active' ? 'Active' : 'Completed',
+                  });
+                });
+
+                // Sort chronologically (newest first)
+                userActivities.sort((a, b) => b.timestamp - a.timestamp);
+
+                return (
+                  <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+                    <motion.div 
+                      initial={{ scale: 0.9 }} 
+                      animate={{ scale: 1 }} 
+                      exit={{ scale: 0.9 }}
+                      className="bg-slate-950 border border-slate-800 p-6 rounded-2xl w-full max-w-4xl text-xs max-h-[90vh] overflow-y-auto"
+                    >
+                      <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-white text-sm">ইউজার কন্ট্রোল ও হিস্ট্রি প্যানেল</h3>
+                          <span className="bg-[#764ba2] text-white text-[9px] px-2 py-0.5 rounded-full font-bold">
+                            {selectedUser.username}
+                          </span>
+                        </div>
+                        <button onClick={() => setSelectedUser(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                          <X size={18} />
+                        </button>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-bold">ইমেইল:</span>
-                        <span className="text-white font-mono">{selectedUser.email}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-900/20 px-2.5 py-1.5 rounded-lg border border-slate-800/45">
-                        <span className="text-slate-400 font-bold">জয়েন করেছেন:</span>
-                        <span className="text-amber-400 font-extrabold font-sans bg-amber-500/5 px-2 py-0.5 rounded text-[10px]">
-                          {getDaysAgoText(selectedUser.createdAt)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-900/20 px-2.5 py-1.5 rounded-lg border border-slate-800/45">
-                        <span className="text-slate-400 font-bold">শেষ প্রবেশ (Last Active):</span>
-                        <ActiveTimeAgo timestamp={selectedUser.lastActive} />
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-bold">ডিভাইস আইডি (DeviceId):</span>
-                        <span className="text-rose-450 font-mono font-bold truncate max-w-[150px]">{selectedUser.deviceId || 'N/A'}</span>
-                      </div>
-                      {(() => {
-                        const duplicateAccounts = selectedUser.deviceId 
-                          ? dbUsers.filter(u => u.deviceId === selectedUser.deviceId && u.uid !== selectedUser.uid)
-                          : [];
-                        if (duplicateAccounts.length > 0) {
-                          return (
-                            <div className="bg-red-950/45 border border-red-900/50 p-2.5 rounded-xl space-y-1 my-1">
-                              <div className="flex justify-between items-center text-red-400 font-extrabold text-[10px]">
-                                <span>⚠️ মাল্টিপল অ্যাকাউন্ট পাওয়া গেছে:</span>
-                                <span className="bg-red-500 text-white px-1.5 py-0.5 rounded font-mono text-[9px] font-bold">
-                                  {duplicateAccounts.length + 1}টি অ্যাকাউন্ট
-                                </span>
-                              </div>
-                              <div className="space-y-1 text-[9px] text-slate-300 font-mono mt-1 max-h-[70px] overflow-y-auto">
-                                {duplicateAccounts.map((dup, i) => (
-                                  <div key={dup.uid || i} className="flex justify-between border-b border-slate-900/40 pb-0.5 last:border-0 last:pb-0">
-                                    <span className="truncate max-w-[100px] text-slate-400 font-bold">{dup.username || 'N/A'}</span>
-                                    <span className="truncate max-w-[140px] text-red-300/80">{dup.email}</span>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                        {/* LEFT COLUMN: User Details, Balances, and Editing */}
+                        <div className="space-y-4">
+                          <div className="space-y-2 border-b border-slate-800 pb-3 leading-normal">
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-bold">নাম:</span>
+                              <span className="text-white font-extrabold">{selectedUser.username}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-bold">ইমেইল:</span>
+                              <span className="text-white font-mono">{selectedUser.email}</span>
+                            </div>
+                            <div className="flex justify-between items-center bg-slate-900/20 px-2.5 py-1.5 rounded-lg border border-slate-800/45">
+                              <span className="text-slate-400 font-bold">জয়েন করেছেন:</span>
+                              <span className="text-amber-400 font-extrabold font-sans bg-amber-500/5 px-2 py-0.5 rounded text-[10px]">
+                                {getDaysAgoText(selectedUser.createdAt)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center bg-slate-900/20 px-2.5 py-1.5 rounded-lg border border-slate-800/45">
+                              <span className="text-slate-400 font-bold">শেষ প্রবেশ (Last Active):</span>
+                              <ActiveTimeAgo timestamp={selectedUser.lastActive} />
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-bold">ডিভাইস আইডি (DeviceId):</span>
+                              <span className="text-rose-450 font-mono font-bold truncate max-w-[150px]">{selectedUser.deviceId || 'N/A'}</span>
+                            </div>
+                            {(() => {
+                              const duplicateAccounts = selectedUser.deviceId 
+                                ? dbUsers.filter(u => u.deviceId === selectedUser.deviceId && u.uid !== selectedUser.uid)
+                                : [];
+                              if (duplicateAccounts.length > 0) {
+                                return (
+                                  <div className="bg-red-950/45 border border-red-900/50 p-2.5 rounded-xl space-y-1 my-1">
+                                    <div className="flex justify-between items-center text-red-400 font-extrabold text-[10px]">
+                                      <span>⚠️ মাল্টিপল অ্যাকাউন্ট পাওয়া গেছে:</span>
+                                      <span className="bg-red-500 text-white px-1.5 py-0.5 rounded font-mono text-[9px] font-bold">
+                                        {duplicateAccounts.length + 1}টি অ্যাকাউন্ট
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1 text-[9px] text-slate-300 font-mono mt-1 max-h-[70px] overflow-y-auto">
+                                      {duplicateAccounts.map((dup, i) => (
+                                        <div key={dup.uid || i} className="flex justify-between border-b border-slate-900/40 pb-0.5 last:border-0 last:pb-0">
+                                          <span className="truncate max-w-[100px] text-slate-400 font-bold">{dup.username || 'N/A'}</span>
+                                          <span className="truncate max-w-[140px] text-red-300/80">{dup.email}</span>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
-                                ))}
+                                );
+                              }
+                              return null;
+                            })()}
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-bold">রেফারাল কোড:</span>
+                              <span className="text-amber-500 font-black font-mono">{selectedUser.referCode || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-bold">মোট রেফার করেছে:</span>
+                              <span className="text-indigo-400 font-black font-sans">
+                                {dbUsers.filter(u => u.referredBy === selectedUser.referCode).length} জন
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-bold">অবস্থা (Status):</span>
+                              <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${selectedUser.isBanned ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                {selectedUser.isBanned ? 'ব্যানড ❌' : 'সক্রিয় ✔'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-bold">বর্তমান ব্যালেন্স:</span>
+                              <span className="text-emerald-400 font-black text-sm">৳{(selectedUser.balance || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
+                                <span className="text-slate-500 font-semibold">Gmail Bal:</span>
+                                <span className="text-teal-400 font-bold">৳{(selectedUser.gmailBalance || 0).toFixed(1)}</span>
+                              </div>
+                              <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
+                                <span className="text-slate-500 font-semibold">Telegram Bal:</span>
+                                <span className="text-sky-400 font-bold">৳{(selectedUser.telegramBalance || 0).toFixed(1)}</span>
+                              </div>
+                              <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
+                                <span className="text-slate-500 font-semibold">WhatsApp Bal:</span>
+                                <span className="text-emerald-400 font-bold">৳{(selectedUser.whatsappBalance || 0).toFixed(1)}</span>
+                              </div>
+                              <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
+                                <span className="text-slate-500 font-semibold">Facebook Bal:</span>
+                                <span className="text-indigo-400 font-bold">৳{(selectedUser.facebookBalance || 0).toFixed(1)}</span>
+                              </div>
+                              <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg col-span-2">
+                                <span className="text-slate-500 font-semibold">Ads Balance:</span>
+                                <span className="text-amber-400 font-bold">৳{(selectedUser.adsBalance || 0).toFixed(2)}</span>
                               </div>
                             </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-bold">রেফারাল কোড:</span>
-                        <span className="text-amber-500 font-black font-mono">{selectedUser.referCode || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-bold">মোট রেফার করেছে:</span>
-                        <span className="text-indigo-400 font-black font-sans">
-                          {dbUsers.filter(u => u.referredBy === selectedUser.referCode).length} জন
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-bold">অবস্থা (Status):</span>
-                        <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${selectedUser.isBanned ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                          {selectedUser.isBanned ? 'ব্যানড ❌' : 'সক্রিয় ✔'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-bold">বর্তমান ব্যালেন্স:</span>
-                        <span className="text-emerald-400 font-black text-sm">৳{(selectedUser.balance || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
-                        <span className="text-slate-500 font-semibold">Gmail Balance:</span>
-                        <span className="text-teal-400 font-bold">৳{(selectedUser.gmailBalance || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
-                        <span className="text-slate-500 font-semibold">Telegram Balance:</span>
-                        <span className="text-sky-400 font-bold">৳{(selectedUser.telegramBalance || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
-                        <span className="text-slate-500 font-semibold">WhatsApp Balance:</span>
-                        <span className="text-emerald-400 font-bold">৳{(selectedUser.whatsappBalance || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
-                        <span className="text-slate-500 font-semibold">Facebook Balance:</span>
-                        <span className="text-indigo-400 font-bold">৳{(selectedUser.facebookBalance || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
-                        <span className="text-slate-500 font-semibold">Ads Balance:</span>
-                        <span className="text-amber-400 font-bold">৳{(selectedUser.adsBalance || 0).toFixed(2)}</span>
-                      </div>
-                    </div>
+                          </div>
 
-                    <div className="space-y-3.5">
-                      <button 
-                        onClick={handleToggleBan}
-                        className={`w-full py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 ${
-                          selectedUser.isBanned 
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                        }`}
-                      >
-                        {selectedUser.isBanned ? ' আনব্যান করুন (Remove Ban) ✔' : ' ব্যান করুন (Ban User) ❌'}
-                      </button>
+                          <div className="space-y-3">
+                            <button 
+                              onClick={handleToggleBan}
+                              className={`w-full py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                                selectedUser.isBanned 
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                                  : 'bg-red-600 hover:bg-red-700 text-white'
+                              }`}
+                            >
+                              {selectedUser.isBanned ? ' আনব্যান করুন (Remove Ban) ✔' : ' ব্যান করুন (Ban User) ❌'}
+                            </button>
 
-                      <button 
-                        onClick={() => openUserSpreadsheet(selectedUser)}
-                        className="w-full bg-slate-900 border border-slate-800 hover:border-emerald-600/50 hover:bg-slate-850 text-emerald-400 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer mt-1"
-                      >
-                        <FileSpreadsheet size={16} />
-                        <span>বিক্রি করা অ্যাকাউন্টের স্প্রেডশিট</span>
-                      </button>
+                            <button 
+                              onClick={() => openUserSpreadsheet(selectedUser)}
+                              className="w-full bg-slate-900 border border-slate-800 hover:border-emerald-600/50 hover:bg-slate-850 text-emerald-400 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                              <FileSpreadsheet size={16} />
+                              <span>বিক্রি করা অ্যাকাউন্টের স্প্রেডশিট</span>
+                            </button>
 
-                      <div className="space-y-1.5 pt-2 border-t border-slate-900">
-                        <label className="text-slate-400 font-bold block pl-1">ব্যালেন্স এডিট ক্যাটাগরি</label>
-                        <select 
-                          value={userBalanceTypeToEdit} 
-                          onChange={(e: any) => setUserBalanceTypeToEdit(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 outline-none text-white font-bold"
-                        >
-                          <option value="main">Main Balance</option>
-                          <option value="gmail">Gmail Balance</option>
-                          <option value="telegram">Telegram Balance</option>
-                          <option value="whatsapp">WhatsApp Balance</option>
-                          <option value="facebook">Facebook Balance</option>
-                          <option value="ads">Ads Balance</option>
-                        </select>
+                            <div className="space-y-1.5 pt-2 border-t border-slate-900">
+                              <label className="text-slate-400 font-bold block pl-1">ব্যালেন্স এডিট ক্যাটাগরি</label>
+                              <select 
+                                value={userBalanceTypeToEdit} 
+                                onChange={(e: any) => setUserBalanceTypeToEdit(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 outline-none text-white font-bold"
+                              >
+                                <option value="main">Main Balance</option>
+                                <option value="gmail">Gmail Balance</option>
+                                <option value="telegram">Telegram Balance</option>
+                                <option value="whatsapp">WhatsApp Balance</option>
+                                <option value="facebook">Facebook Balance</option>
+                                <option value="ads">Ads Balance</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-slate-400 font-bold block pl-1">ব্যালেন্স এডিট (৳)</label>
+                              <input 
+                                type="number" 
+                                placeholder="টাকার পরিমাণ যেমন: ৫০"
+                                value={userBalanceChangeInput}
+                                onChange={(e) => setUserBalanceChangeInput(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 focus:border-rose-500 rounded-xl p-3 outline-none text-white font-bold font-mono"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <button 
+                                onClick={() => handleUpdateBalance('add')}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition cursor-pointer"
+                              >
+                                ৳ ব্যালেন্স যোগ
+                              </button>
+                              <button 
+                                onClick={() => handleUpdateBalance('deduct')}
+                                className="bg-red-600 hover:bg-red-750 text-white font-bold py-2.5 rounded-xl transition cursor-pointer"
+                              >
+                                ৳ ব্যালেন্স বিয়োগ
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Unified Recent Activities Feed */}
+                        <div className="space-y-4 lg:border-l lg:border-slate-800 lg:pl-6">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-slate-100 text-xs uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                              তার করা সাম্প্রতিক কাজ ও ইতিহাস ({userActivities.length})
+                            </h4>
+                          </div>
+
+                          {userActivities.length === 0 ? (
+                            <div className="border border-dashed border-slate-800 rounded-xl p-8 text-center text-slate-500 text-xs">
+                              কোনো সাম্প্রতিক কার্যকলাপ বা কাজ পাওয়া যায়নি।
+                            </div>
+                          ) : (
+                            <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                              {userActivities.map((act) => {
+                                let typeLabel = act.type.toUpperCase();
+                                let typeBg = 'bg-slate-900 text-slate-400';
+                                if (act.type === 'microjob') {
+                                  typeBg = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                                  typeLabel = 'মাইক্রো জব';
+                                } else if (['gmail', 'telegram', 'whatsapp', 'facebook', 'instagram'].includes(act.type)) {
+                                  typeBg = 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
+                                  typeLabel = `${act.type === 'tg' ? 'টেলিগ্রাম' : act.type === 'wa' ? 'হোয়াটসঅ্যাপ' : act.type === 'fb' ? 'ফেসবুক' : act.type === 'ig' ? 'ইনস্টাগ্রাম' : 'জিমেইল'} বিক্রয়`;
+                                } else if (act.type === 'deposit') {
+                                  typeBg = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                                  typeLabel = 'ডিপোজিট';
+                                } else if (act.type === 'withdraw') {
+                                  typeBg = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                                  typeLabel = 'উত্তোলন';
+                                } else if (act.type === 'activation') {
+                                  typeBg = 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+                                  typeLabel = 'অ্যাক্টিভেশন';
+                                } else if (act.type === 'wallet_history') {
+                                  typeBg = 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+                                  typeLabel = 'অ্যাডমিন এডজাস্ট';
+                                } else if (act.type === 'transaction') {
+                                  typeBg = 'bg-teal-500/10 text-teal-400 border border-teal-500/20';
+                                  typeLabel = 'ট্রান্সফার';
+                                } else if (act.type === 'investment') {
+                                  typeBg = 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20';
+                                  typeLabel = 'ইনভেস্টমেন্ট';
+                                }
+
+                                return (
+                                  <div key={act.id} className="bg-slate-950 border border-slate-900 hover:border-slate-850 p-3 rounded-xl space-y-2 transition">
+                                    <div className="flex justify-between items-start gap-2">
+                                      <div className="space-y-0.5">
+                                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8.5px] font-bold ${typeBg}`}>
+                                          {typeLabel}
+                                        </span>
+                                        <h5 className="font-bold text-slate-200 text-[11px] leading-snug mt-1">{act.title}</h5>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        {act.amount && (
+                                          <span className="text-emerald-400 font-extrabold text-[11px] block">{act.amount}</span>
+                                        )}
+                                        <span className={`inline-block text-[8.5px] font-bold px-1.5 py-0.5 rounded ${act.badgeColor}`}>
+                                          {act.statusText}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="text-[10px] text-slate-400 font-mono bg-slate-900/45 p-1.5 rounded border border-slate-900/30 break-all leading-normal">
+                                      {act.details}
+                                    </div>
+
+                                    <div className="text-[8.5px] text-slate-500 flex justify-between font-mono">
+                                      <span className="truncate max-w-[120px]">ID: {act.id}</span>
+                                      <span>{new Date(act.timestamp).toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-slate-400 font-bold block pl-1">ব্যালেন্স এডিট (৳)</label>
-                        <input 
-                          type="number" 
-                          placeholder="টাকার পরিমাণ যেমন: ৫০"
-                          value={userBalanceChangeInput}
-                          onChange={(e) => setUserBalanceChangeInput(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 focus:border-rose-500 rounded-xl p-3 outline-none text-white font-bold font-mono"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <button 
-                          onClick={() => handleUpdateBalance('add')}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition"
-                        >
-                          ৳ ব্যালেন্স যোগ
-                        </button>
-                        <button 
-                          onClick={() => handleUpdateBalance('deduct')}
-                          className="bg-red-600 hover:bg-red-750 text-white font-bold py-2.5 rounded-xl transition"
-                        >
-                          ৳ ব্যালেন্স বিয়োগ
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
+                    </motion.div>
+                  </div>
+                );
+              })()}
             </AnimatePresence>
           </motion.div>
         )}

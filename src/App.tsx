@@ -663,7 +663,7 @@ export default function App() {
   // Loading indicator screen
   if (isLoadingAuth) {
     return wrapWithSecurity(
-      <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center max-w-md mx-auto shadow-2xl border-x border-stone-200">
+      <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center w-full max-w-md mx-auto sm:shadow-2xl sm:border-x sm:border-stone-200">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-[#764ba2] border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-stone-500 font-bold text-xs tracking-wider">TakaHub Pro লোড হচ্ছে...</p>
@@ -677,7 +677,7 @@ export default function App() {
     const isUserAdmin = isAdmin;
     if (!isUserAdmin && siteMaintenance.enabled) {
       return wrapWithSecurity(
-        <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center px-4 max-w-sm mx-auto shadow-2xl border-x border-slate-800 text-center text-white relative">
+        <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center px-4 w-full max-w-md mx-auto sm:shadow-2xl sm:border-x sm:border-slate-800 text-center text-white relative">
           <div className="bg-slate-950 border border-slate-850 rounded-3xl p-6.5 shadow-xl w-full border border-amber-900/40">
             <div className="w-16 h-16 bg-amber-500/10 text-amber-550 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 animate-pulse">
               <AlertCircle size={32} />
@@ -742,7 +742,7 @@ export default function App() {
 
   // Non-logged in Users: Renders beautiful Authenticate Login / Registers form
   return wrapWithSecurity(
-    <div className="min-h-screen bg-slate-550 flex flex-col justify-center items-center px-4 max-w-sm mx-auto shadow-2xl border-x border-stone-200 bg-linear-to-tr from-[#667eea]/5 to-[#8ec5fc]/15 relative">
+    <div className="min-h-screen bg-slate-550 flex flex-col justify-center items-center px-4 w-full max-w-md mx-auto sm:shadow-2xl sm:border-x sm:border-stone-200 bg-linear-to-tr from-[#667eea]/5 to-[#8ec5fc]/15 relative">
       
       <div className="w-full bg-white rounded-3xl p-6.5 shadow-xl border border-stone-150 relative overflow-hidden">
         

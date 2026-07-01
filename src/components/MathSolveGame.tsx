@@ -216,7 +216,7 @@ export default function MathSolveGame({
           </div>
 
           {/* Submission Form */}
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
             <input
               type="number"
               pattern="[0-9]*"
@@ -228,14 +228,14 @@ export default function MathSolveGame({
                 setUserAnswer(e.target.value);
                 if (status === 'wrong') setStatus('idle');
               }}
-              className="flex-1 bg-stone-50 hover:bg-stone-100/50 focus:bg-white border-2 border-stone-200 rounded-2xl px-4 py-3 text-sm font-black outline-none focus:border-amber-500 text-stone-800 transition shadow-3xs"
+              className="flex-1 bg-stone-50 hover:bg-stone-100/50 focus:bg-white border-2 border-stone-200 rounded-2xl px-4 py-3.5 text-sm font-black outline-none focus:border-amber-500 text-stone-800 transition shadow-3xs"
               required
             />
             {status === 'success' ? (
               <button
                 type="button"
                 onClick={generateProblem}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-2xl flex items-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm px-6 py-3.5 rounded-2xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
               >
                 <RefreshCw size={15} />
                 নতুন টাস্ক
@@ -244,7 +244,7 @@ export default function MathSolveGame({
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs sm:text-sm px-6 py-3 rounded-2xl shadow-sm hover:shadow-xs active:scale-95 transition cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs sm:text-sm px-8 py-3.5 rounded-2xl shadow-sm hover:shadow-xs active:scale-95 transition flex items-center justify-center cursor-pointer disabled:opacity-50"
               >
                 {status === 'submitting' ? 'সাবমিট হচ্ছে...' : 'সাবমিট করুন'}
               </button>
